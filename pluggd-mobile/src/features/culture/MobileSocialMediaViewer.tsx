@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { musicError, musicPostId } from '../social-music/model';
 import { musicPlayback } from '../social-music/service';
+import { prepareInlineVideoMutedPlayback, setInlineVideoAutomaticAudio, setInlineVideoPrimaryAudioProtection } from './inlineVideoAudio';
 import { hydrateInlineVideoSoundPreference, setInlineVideoUserMuted, useInlineVideoSoundPreference } from './inlineVideoSoundPreference';
 
 export type MobileSocialMediaSelection =
@@ -35,9 +36,18 @@ function FullScreenVideo({ uri }: { uri: string }) {
 }
 
 function SessionVideo({ uri }: { uri: string }) {
-  const { pause } = usePlayback();
+  const { pause, isPlaying, isBuffering } = usePlayback();
+  const musicActive = isPlaying || isBuffering;
+  const primaryAudio = useRef(musicActive);
+  primaryAudio.current = musicActive;
+  const primaryMode = useRef({ active: musicActive, generation: 0 });
+  if (primaryMode.current.active !== musicActive) primaryMode.current = { active: musicActive, generation: primaryMode.current.generation + 1 };
+  const primaryGeneration = primaryMode.current.generation;
+  const quietRequest = useRef(0);
   const [source, setSource] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [mutedSnapshot, setMutedSnapshot] = useState(true);
+  const [quietReadyGeneration, setQuietReadyGeneration] = useState<number | null>(null);
   const [retry, setRetry] = useState(0);
   const replacement = useRef<Promise<void>>(Promise.resolve());
   const player = useVideoPlayer(null, (instance) => {
@@ -46,6 +56,20 @@ function SessionVideo({ uri }: { uri: string }) {
     instance.staysActiveInBackground = false;
     instance.audioMixingMode = 'mixWithOthers';
   });
+  useEffect(() => {
+    let current = true;
+    const request = ++quietRequest.current;
+    setQuietReadyGeneration(null);
+    setInlineVideoPrimaryAudioProtection(player, musicActive);
+    if (source && player.muted) {
+      void prepareInlineVideoMutedPlayback(player).then(ready => {
+        if (!current || !player.muted || request !== quietRequest.current || primaryGeneration !== primaryMode.current.generation) return;
+        if (ready) setQuietReadyGeneration(primaryGeneration);
+        else { player.pause(); setError('This video could not be played. Please try again.'); }
+      }).catch(() => { if (current && player.muted && request === quietRequest.current && primaryGeneration === primaryMode.current.generation) { player.pause(); setError('This video could not be played. Please try again.'); } });
+    }
+    return () => { current = false; };
+  }, [player, musicActive, primaryGeneration, source]);
   useEffect(() => {
     let active = true;
     let generation = 0;
@@ -62,28 +86,52 @@ function SessionVideo({ uri }: { uri: string }) {
       replacement.current = work;
       return work;
     };
-    const invalidate = () => { generation++; controller?.abort(); sourceReady = false; };
+    const invalidate = () => { generation++; quietRequest.current++; controller?.abort(); sourceReady = false; };
     const load = () => {
       invalidate();
       const request = generation;
       controller = new AbortController();
       const signal = controller.signal;
       const current = () => active && foreground && request === generation;
-      setSource(null); setError(''); player.pause();
+      setSource(null); setError(''); setQuietReadyGeneration(null); player.pause();
       void (async () => {
         await hydrateInlineVideoSoundPreference();
         if (!current()) return;
         const next = postId ? await musicPlayback(postId, signal) : uri;
         if (!current()) return;
         await replace(next, current);
-        if (current()) { player.muted = useInlineVideoSoundPreference.getState().muted; player.audioMixingMode = player.muted ? 'mixWithOthers' : 'doNotMix'; sourceReady = true; setSource(next); }
+        if (!current()) return;
+        player.muted = useInlineVideoSoundPreference.getState().muted;
+        setMutedSnapshot(player.muted);
+        player.audioMixingMode = player.muted ? 'mixWithOthers' : 'doNotMix';
+        setInlineVideoAutomaticAudio(player, player.muted);
+        setInlineVideoPrimaryAudioProtection(player, primaryAudio.current);
+        if (player.muted) {
+          const request = ++quietRequest.current;
+          const preparedGeneration = primaryMode.current.generation;
+          const ready = await prepareInlineVideoMutedPlayback(player);
+          if (!ready && preparedGeneration === primaryMode.current.generation) throw new Error('This video could not be played. Please try again.');
+          if (current() && ready && request === quietRequest.current && preparedGeneration === primaryMode.current.generation) setQuietReadyGeneration(preparedGeneration);
+        }
+        if (current()) { sourceReady = true; setSource(next); }
       })().catch(error => { if (current()) setError(musicError(error)); });
     };
     if (foreground) load();
     const playing = player.addListener('playingChange', event => { if (event.isPlaying && !player.muted) void pause(); });
     const muted = player.addListener('mutedChange', event => {
       if (!active || !foreground || !sourceReady) return;
+      setMutedSnapshot(event.muted); setQuietReadyGeneration(null);
       player.audioMixingMode = event.muted ? 'mixWithOthers' : 'doNotMix';
+      setInlineVideoAutomaticAudio(player, event.muted);
+      setInlineVideoPrimaryAudioProtection(player, primaryAudio.current);
+      const request = ++quietRequest.current;
+      const preparedGeneration = primaryMode.current.generation;
+      if (event.muted) void prepareInlineVideoMutedPlayback(player).then(ready => {
+        if (active && foreground && sourceReady && player.muted && request === quietRequest.current && preparedGeneration === primaryMode.current.generation) {
+          if (ready) setQuietReadyGeneration(preparedGeneration);
+          else { player.pause(); setError('This video could not be played. Please try again.'); }
+        }
+      }).catch(() => { if (active && foreground && sourceReady && player.muted && request === quietRequest.current && preparedGeneration === primaryMode.current.generation) { player.pause(); setError('This video could not be played. Please try again.'); } });
       void setInlineVideoUserMuted(event.muted);
       if (!event.muted && player.playing) void pause();
     });
@@ -105,7 +153,7 @@ function SessionVideo({ uri }: { uri: string }) {
     <Pressable accessibilityRole="button" accessibilityLabel="Retry video playback" onPress={() => setRetry(value => value + 1)} style={{ minHeight: 44, padding: 12 }}><Text style={{ color: '#FF6600' }}>Try again</Text></Pressable>
   </View>;
   if (!source) return <View style={[styles.media, { alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color="#FF6600" accessibilityLabel="Loading video" /></View>;
-  return <VideoView player={player} style={styles.media} nativeControls contentFit="contain" />;
+  return <VideoView player={player} style={styles.media} nativeControls={!mutedSnapshot || quietReadyGeneration === primaryGeneration} contentFit="contain" />;
 }
 
 export function MobileSocialMediaViewer({

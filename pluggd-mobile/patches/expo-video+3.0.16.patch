@@ -86,7 +86,7 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
      let anyPlayerShowsNotification = videoPlayers.allObjects.contains { player in
        player.showNowPlayingNotification
      }
-@@ -85,6 +130,26 @@
+@@ -85,6 +130,33 @@
      let shouldMixOverride = audioMixingMode == .mixWithOthers
      let doNotMixOverride = audioMixingMode == .doNotMix
      let shouldDuckOthers = audioMixingMode == .duckOthers && isOutputtingAudio
@@ -94,6 +94,13 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
 +    // A silent preview never claims the shared session. If video owned it,
 +    // restore its predecessor only while no newer audio owner has changed it.
 +    if !isOutputtingAudio && !anyPlayerShowsNotification && !doNotMixOverride {
++      // A muted AVPlayer can still activate the shared session. Keep its safely
++      // prepared ambient session until it stops, unless PLUGGD music takes over.
++      let preparedPreviewActive = videoPlayers.allObjects.contains {
++        $0.usesAmbientAudio && !$0.preservesPrimaryAudio && ($0.isPlaying || $0.automaticPlaybackRequested)
++      }
++      if preparedPreviewActive, let lastVideo = lastVideoAudioSession,
++        lastVideo.category == .ambient, AudioSessionState(audioSession) == lastVideo { return }
 +      if let previous = previousAudioSession,
 +        let lastVideo = lastVideoAudioSession,
 +        AudioSessionState(audioSession) == lastVideo, !otherAudio {
@@ -113,7 +120,7 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
  
      // The now playing notification won't be shown if we allow the audio to mix with others
      let autoShouldMix = !isOutputtingAudio && !anyPlayerShowsNotification
-@@ -102,11 +167,25 @@
+@@ -102,11 +174,25 @@
        audioSessionCategoryOptions.remove(.duckOthers)
      }
  
@@ -141,7 +148,7 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
        }
      }
  
-@@ -118,6 +197,44 @@
+@@ -118,6 +204,53 @@
          log.warn("Failed to activate the audio session. This might cause issues with audio playback. \(error.localizedDescription)")
        }
      }
@@ -150,7 +157,7 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
 +
 +  // Preflight and start are one ordered operation. A queued UI mute/pause,
 +  // replacement, background transition or explicit sound request invalidates it.
-+  func playAutomaticPreview(_ player: VideoPlayer, completion: @escaping (Bool) -> Void) {
++  func playAutomaticPreview(_ player: VideoPlayer, allowSound: Bool = true, startPlayback: Bool = true, completion: @escaping (Bool) -> Void) {
 +    let request = player.automaticAudioRevision
 +    Self.managerQueue.async { [weak self, weak player] in
 +      guard let self = self, let player = player else { completion(false); return }
@@ -160,28 +167,37 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
 +      var foreground = false
 +      DispatchQueue.main.sync { foreground = UIApplication.shared.applicationState == .active }
 +      var prepared: AudioSessionState?
-+      if foreground && !otherAudio && !mediaOwner && player.automaticAudioRevision == request && player.usesAmbientAudio {
-+        if self.previousAudioSession == nil { self.previousAudioSession = AudioSessionState(session) }
-+        do {
-+          // Ambient mixes implicitly. The mixWithOthers option is not valid for this category.
-+          try session.setCategory(.ambient, mode: .default, options: [])
-+          try session.setActive(true)
-+          prepared = AudioSessionState(session)
-+          self.lastVideoAudioSession = prepared
-+        } catch { log.warn("Automatic video audio could not be prepared. \(error.localizedDescription)") }
-+      }
-+      var audible = false
-+      DispatchQueue.main.sync {
-+        _ = player.startAutomaticAudioIfCurrent(request) {
-+          guard player.usesAmbientAudio, UIApplication.shared.applicationState == .active else { return }
-+          audible = prepared != nil && AudioSessionState(session) == prepared
-+            && !session.isOtherAudioPlaying && !session.secondaryAudioShouldBeSilencedHint
-+          player.automaticPlaybackRequested = audible
-+          player.isMuted = !audible
-+          player.ref.play()
++      if foreground && !mediaOwner && player.automaticAudioRevision == request && player.usesAmbientAudio {
++        if player.preservesPrimaryAudio {
++          // Music, including buffering, owns this session. Muted video must not
++          // downgrade it to ambient and disable background playback.
++          if !otherAudio { prepared = AudioSessionState(session) }
++        } else {
++          if self.previousAudioSession == nil { self.previousAudioSession = AudioSessionState(session) }
++          do {
++            // Ambient mixes implicitly, even if a muted AVPlayer activates it.
++            try session.setCategory(.ambient, mode: .default, options: [])
++            try session.setActive(true)
++            prepared = AudioSessionState(session)
++            self.lastVideoAudioSession = prepared
++          } catch { log.warn("Automatic video audio could not be prepared. \(error.localizedDescription)") }
 +        }
 +      }
-+      completion(audible)
++      var audible = false
++      var ready = false
++      DispatchQueue.main.sync {
++        _ = player.startAutomaticAudioIfCurrent(request) {
++          guard player.usesAmbientAudio, UIApplication.shared.applicationState == .active,
++            prepared != nil, AudioSessionState(session) == prepared else { return }
++          ready = true
++          audible = allowSound && !player.preservesPrimaryAudio
++            && !session.isOtherAudioPlaying && !session.secondaryAudioShouldBeSilencedHint
++          if player.isMuted != !audible { player.isMuted = !audible }
++          player.automaticPlaybackRequested = true
++          if startPlayback { player.ref.play() }
++        }
++      }
++      completion(startPlayback ? audible : ready)
 +    }
    }
  
@@ -201,10 +217,17 @@ diff --git a/node_modules/expo-video/ios/VideoModule.swift b/node_modules/expo-v
      }
  
      Function("getCurrentVideoCacheSize") {
-@@ -266,6 +271,13 @@
+@@ -266,6 +271,20 @@
          player.bufferOptions = bufferOptions
        }
  
++      Property("preservesPrimaryAudio") { player -> Bool in
++        return player.preservesPrimaryAudio
++      }
++      .set { (player, protect: Bool) in
++        player.preservesPrimaryAudio = protect
++      }
++
 +      Property("usesAmbientAudio") { player -> Bool in
 +        return player.usesAmbientAudio
 +      }
@@ -215,12 +238,16 @@ diff --git a/node_modules/expo-video/ios/VideoModule.swift b/node_modules/expo-v
        Property("audioMixingMode") { player -> AudioMixingMode in
          return player.audioMixingMode
        }
-@@ -314,11 +326,16 @@
+@@ -314,11 +333,20 @@
          player.ref.preventsDisplaySleepDuringVideoPlayback = keepScreenOnWhilePlaying
        }
  
-+      AsyncFunction("playAutomaticPreview") { (player: VideoPlayer, promise: Promise) in
-+        VideoManager.shared.playAutomaticPreview(player) { audible in promise.resolve(audible) }
++      AsyncFunction("prepareMutedPlayback") { (player: VideoPlayer, promise: Promise) in
++        VideoManager.shared.playAutomaticPreview(player, allowSound: false, startPlayback: false) { ready in promise.resolve(ready) }
++      }
++
++      AsyncFunction("playAutomaticPreview") { (player: VideoPlayer, allowSound: Bool, promise: Promise) in
++        VideoManager.shared.playAutomaticPreview(player, allowSound: allowSound) { audible in promise.resolve(audible) }
 +      }
 +
        Function("play") { player in
@@ -235,7 +262,7 @@ diff --git a/node_modules/expo-video/ios/VideoModule.swift b/node_modules/expo-v
 diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-video/ios/VideoPlayer.swift
 --- a/node_modules/expo-video/ios/VideoPlayer.swift
 +++ b/node_modules/expo-video/ios/VideoPlayer.swift
-@@ -20,6 +20,34 @@
+@@ -20,6 +20,42 @@
        }
      }
    }
@@ -261,6 +288,14 @@ diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-v
 +    guard !automaticReleased, automaticRevision == request else { return false }
 +    action(); return true
 +  }
++  var preservesPrimaryAudio = false {
++    didSet {
++      if oldValue != preservesPrimaryAudio {
++        invalidateAutomaticAudio()
++        VideoManager.shared.setAppropriateAudioSessionOrWarn()
++      }
++    }
++  }
 +  var usesAmbientAudio = false {
 +    didSet {
 +      if !usesAmbientAudio { invalidateAutomaticAudio() }
@@ -270,7 +305,7 @@ diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-v
    private(set) var isPlaying = false
    private(set) var status: PlayerStatus = .idle
  
-@@ -82,6 +110,7 @@
+@@ -82,6 +118,7 @@
  
    var isMuted: Bool = false {
      didSet {
@@ -278,7 +313,7 @@ diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-v
        if oldValue != isMuted {
          let payload = MutedChangedEventPayload(muted: isMuted, oldMuted: oldValue)
          safeEmit(event: "mutedChange", payload: payload)
-@@ -178,6 +207,14 @@
+@@ -178,6 +215,14 @@
      ref.setMediaSelectionCriteria(selectionCriteria, forMediaCharacteristic: .legible)
    }
  
@@ -293,7 +328,7 @@ diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-v
    deinit {
      observer?.cleanup()
      NowPlayingManager.shared.unregisterPlayer(self)
-@@ -194,6 +231,7 @@
+@@ -194,6 +239,7 @@
    }
  
    func replaceCurrentItem(with videoSource: VideoSource?) throws {
@@ -301,7 +336,7 @@ diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-v
      dangerousPropertiesStore.ownerIsReplacing = true
      videoSourceLoader.cancelCurrentTask()
      guard
-@@ -234,6 +272,7 @@
+@@ -234,6 +280,7 @@
     * Replaces the current item, while loading the AVAsset on a different thread. The synchronous version can lock the main thread for extended periods of time.
     */
    func replaceCurrentItem(with videoSource: VideoSource?) async throws {
@@ -309,7 +344,7 @@ diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-v
      guard let videoSource, videoSource.uri != nil else {
        clearCurrentItem()
        return
-@@ -301,6 +340,7 @@
+@@ -301,6 +348,7 @@
      let payload = StatusChangedEventPayload(status: newStatus, oldStatus: oldStatus, error: errorRecord)
      safeEmit(event: "statusChange", payload: payload)
      status = newStatus

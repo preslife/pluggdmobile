@@ -9,7 +9,7 @@ import { pluggdFonts } from '../../design/typography';
 import { musicPostId } from '../social-music/model';
 import { musicPlayback } from '../social-music/service';
 import { useInlineVideoVisibility } from './useInlineVideoVisibility';
-import { otherAudioPreventsInlineAutoplay, playInlineVideoAutomatic, setInlineVideoAutomaticAudio } from './inlineVideoAudio';
+import { playInlineVideoAutomatic, setInlineVideoAutomaticAudio, setInlineVideoPrimaryAudioProtection } from './inlineVideoAudio';
 import { hydrateInlineVideoSoundPreference, setInlineVideoUserMuted, useInlineVideoSoundPreference } from './inlineVideoSoundPreference';
 
 type Props = { uri: string; blocked: boolean; onFullscreen: () => void };
@@ -85,6 +85,7 @@ function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick
   const replacement = useRef<Promise<void>>(Promise.resolve());
   const player = useVideoPlayer(null, instance => {
     instance.muted = true;
+    setInlineVideoPrimaryAudioProtection(instance, musicState.current);
     setInlineVideoAutomaticAudio(instance, true);
     instance.audioMixingMode = 'mixWithOthers';
     instance.loop = true;
@@ -124,16 +125,17 @@ function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick
             automaticAudio.current = false; setInlineVideoAutomaticAudio(player, false);
             player.audioMixingMode = 'doNotMix'; player.muted = false; setMuted(false);
           }
-        } else if (!musicState.current && !otherAudioPreventsInlineAutoplay()) {
-          automaticAudio.current = true; setInlineVideoAutomaticAudio(player, true);
-          player.audioMixingMode = 'mixWithOthers';
-          const audible = await playInlineVideoAutomatic(player);
-          if (!current) return;
-          if (request !== soundRequest.current || useInlineVideoSoundPreference.getState().muted) {
-            player.muted = true; setMuted(true);
-          } else { setMuted(!audible); }
-          return;
         }
+      }
+      if (automaticAudio.current) {
+        setInlineVideoPrimaryAudioProtection(player, musicState.current);
+        const audible = await playInlineVideoAutomatic(player,
+          request === soundRequest.current && !useInlineVideoSoundPreference.getState().muted && !musicState.current);
+        if (!current) return;
+        if (request !== soundRequest.current || useInlineVideoSoundPreference.getState().muted || musicState.current) {
+          player.muted = true; setMuted(true);
+        } else { setMuted(!audible); }
+        return;
       }
       player.play();
     })().catch(() => { if (current) setStatus('error'); });
@@ -150,6 +152,7 @@ function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick
   useEffect(() => {
     const started = musicActive && (!previousMusic.current.playing || previousMusic.current.trackKey !== musicTrackKey);
     previousMusic.current = { playing: musicActive, trackKey: musicTrackKey };
+    setInlineVideoPrimaryAudioProtection(player, musicActive);
     if (!musicActive) return;
     if (started) soundRequest.current++;
     player.muted = true;
@@ -205,6 +208,18 @@ function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick
   const requestVideoSound = () => {
     if (!useInlineVideoSoundPreference.getState().muted && (muted || automaticAudio.current)) void enableSound();
   };
+  const resumeVideo = () => {
+    revealControls();
+    if (useInlineVideoSoundPreference.getState().muted) {
+      const request = ++soundRequest.current;
+      setInlineVideoPrimaryAudioProtection(player, musicState.current);
+      void playInlineVideoAutomatic(player, false).catch(() => {
+        if (alive.current && request === soundRequest.current) setStatus('error');
+      });
+    } else {
+      player.play(); requestVideoSound();
+    }
+  };
   const seek = (seconds: number) => { player.currentTime = Math.max(0, Math.min(duration, seconds)); setPosition(player.currentTime); };
   const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
   const showControls = status === 'ready' && (screenReader || !playing || controlsVisible);
@@ -213,8 +228,7 @@ function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick
     {status === 'ready' ? <Pressable accessible={!screenReader} accessibilityRole="button" accessibilityLabel={!playing ? 'Play video' : showControls ? 'Hide video controls' : 'Show video controls'} style={StyleSheet.absoluteFill} onPress={event => {
       event.stopPropagation();
       if (!playing) {
-        revealControls(); player.play();
-        requestVideoSound();
+        resumeVideo();
       } else if (controlsVisible) setControlsVisible(false);
       else {
         revealControls();
@@ -230,7 +244,7 @@ function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick
       <Pressable accessibilityRole="button" accessibilityLabel="Retry video playback" style={styles.retry} onPress={event => { event.stopPropagation(); player.pause(); setRetry(value => value + 1); }}><Text style={styles.errorText}>Try again</Text></Pressable>
     </View> : showControls ? <View style={styles.controls}>
       <View style={styles.controlRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Pause video' : 'Play video'} disabled={status !== 'ready'} style={styles.button} onPress={event => { event.stopPropagation(); revealControls(); if (playing) { soundRequest.current++; player.pause(); } else { player.play(); requestVideoSound(); } }}><MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={25} color="#FFFFFF" /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Pause video' : 'Play video'} disabled={status !== 'ready'} style={styles.button} onPress={event => { event.stopPropagation(); revealControls(); if (playing) { soundRequest.current++; player.pause(); } else { resumeVideo(); } }}><MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={25} color="#FFFFFF" /></Pressable>
         <Text style={styles.time}>{clock(position)} / {clock(duration)}</Text>
         <Pressable accessibilityRole="button" accessibilityLabel={muted ? 'Turn video sound on' : 'Mute video'} accessibilityState={{ busy }} disabled={busy || status !== 'ready'} style={styles.button} onPress={event => { event.stopPropagation(); revealControls(); void toggleSound(); }}><MaterialIcons name={muted ? 'volume-off' : 'volume-up'} size={22} color="#FFFFFF" /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Open video full screen" style={styles.button} onPress={event => { event.stopPropagation(); player.pause(); onFullscreen(); }}><MaterialIcons name="fullscreen" size={25} color="#FFFFFF" /></Pressable>

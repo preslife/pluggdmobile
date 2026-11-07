@@ -44,8 +44,8 @@ const rn = { View: Box, Text: Box, ScrollView: Box, KeyboardAvoidingView: Box, T
   Alert: { alert: (_title, _copy, buttons) => buttons?.find(b => b.text === 'Continue draft')?.onPress() },
   Animated: { Value: class {}, View: Box, timing: () => ({ start: noop }) },
 };
-function player() { return { playing: false, pause: noop, play: noop, replaceAsync: async () => {}, addListener: () => ({ remove: noop }) }; }
-function videoMock(make) { return { VideoView: () => React.createElement('span', null, 'Video ready'), useVideoPlayer: () => { const ref = React.useRef(); if (!ref.current) ref.current = make(); return ref.current; } }; }
+function player() { return { playing: false, prepareMutedPlayback: async function () { this.preparations = (this.preparations || 0) + 1; return true; }, pause: noop, play: noop, replaceAsync: async () => {}, addListener: () => ({ remove: noop }) }; }
+function videoMock(make) { return { VideoView: props => React.createElement('span', { 'data-native-controls': String(props.nativeControls) }, 'Video ready'), useVideoPlayer: () => { const ref = React.useRef(); if (!ref.current) ref.current = make(); return ref.current; } }; }
 async function mount(Component) {
   const container = document.createElement('div'); document.body.append(container); const root = createRoot(container);
   await act(async () => { root.render(React.createElement(Component)); await flush(); });
@@ -57,7 +57,8 @@ function viewer(make, playback, settings = {}) {
     '@expo/vector-icons': { MaterialIcons: () => null }, 'expo-status-bar': { StatusBar: () => null }, 'expo-video': videoMock(make),
     'react-native': rn, 'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
     '../../components/PluggdImage': { Image: Box, PluggdImage: Box }, '../../design/typography': { pluggdFonts: {} },
-    '../../context/AuthProvider': { useAuth: () => auth }, '../../context/PlaybackProvider': { usePlayback: () => ({ pause: settings.pause || pauseGlobal }) },
+    '../../context/AuthProvider': { useAuth: () => auth }, '../../context/PlaybackProvider': { usePlayback: () => ({ pause: settings.pause || pauseGlobal, isPlaying: !!settings.music, isBuffering: !!settings.buffering }) },
+    './inlineVideoAudio': load('../src/features/culture/inlineVideoAudio.ts', { 'react-native': rn, 'expo-modules-core': { requireNativeModule: () => ({}) } }),
     './inlineVideoSoundPreference': { hydrateInlineVideoSoundPreference: async () => {}, setInlineVideoUserMuted: async muted => { preference.muted = muted; }, useInlineVideoSoundPreference: { getState: () => preference } },
     '../social-music/model': { musicError: e => e.message, musicPostId: () => 'private-post' }, '../social-music/service': { musicPlayback: playback },
   }, '\nmodule.exports.TestVideo = SessionVideo;').TestVideo;
@@ -136,6 +137,7 @@ tests.push(['fullscreen inherits mute and native sound changes preserve the pref
   const view = await mount(() => React.createElement(Video, { uri: 'private' }));
   try {
     assert.equal(native.muted, true);
+    assert.ok(native.preparations >= 1, 'native controls are exposed only after quiet preparation');
     assert.equal(native.audioMixingMode, 'mixWithOthers');
     await act(async () => events.playingChange({ isPlaying: true }));
     assert.equal(pauses, 0, 'a muted fullscreen video preserves existing music');
@@ -150,8 +152,46 @@ tests.push(['fullscreen inherits mute and native sound changes preserve the pref
     assert.equal(native.audioMixingMode, 'mixWithOthers');
   } finally { await view.close(); }
 }]);
+tests.push(['failed quiet fullscreen preparation does not expose native playback controls', async () => {
+  const native = { ...player(), prepareMutedPlayback: async () => false };
+  const Video = viewer(() => native, async () => 'https://private/fresh', { preference: { muted: true }, music: true, buffering: true });
+  const view = await mount(() => React.createElement(Video, { uri: 'private' }));
+  try { assert.equal(native.preservesPrimaryAudio, true); assert.ok(!view.container.textContent.includes('Video ready')); assert.ok(view.container.textContent.includes('This video could not be played.')); } finally { await view.close(); }
+}]);
+tests.push(['muted fullscreen re-prepares controls across primary-music transitions without replacing its source', async () => {
+  const replacements = []; const settings = { preference: { muted: true }, music: false };
+  const native = { ...player(), currentTime: 12, replaceAsync: async uri => { replacements.push(uri); } };
+  const Video = viewer(() => native, async () => 'https://private/fresh', settings);
+  const view = await mount(() => React.createElement(Video, { uri: 'private' }));
+  const controls = () => view.container.querySelector('[data-native-controls]')?.getAttribute('data-native-controls');
+  try {
+    assert.equal(controls(), 'true');
+    for (const music of [true, false]) {
+      const preparation = deferred(); native.prepareMutedPlayback = () => preparation.promise;
+      settings.music = music; await view.render();
+      assert.equal(controls(), 'false', 'old preparation cannot authorise controls after music state changes');
+      await act(async () => { preparation.resolve(true); await flush(); });
+      assert.equal(controls(), 'true');
+      assert.equal(native.currentTime, 12); assert.equal(replacements.length, 1);
+    }
+  } finally { await view.close(); }
+}]);
+tests.push(['rapid primary-audio ABA never reuses a stale fullscreen preparation', async () => {
+  const settings = { preference: { muted: true }, music: false }; const native = player();
+  const Video = viewer(() => native, async () => 'https://private/fresh', settings);
+  const view = await mount(() => React.createElement(Video, { uri: 'private' }));
+  const controls = () => view.container.querySelector('[data-native-controls]')?.getAttribute('data-native-controls');
+  try {
+    assert.equal(controls(), 'true'); const first = deferred(); const second = deferred(); let count = 0;
+    native.prepareMutedPlayback = () => (++count === 1 ? first.promise : second.promise);
+    settings.music = true; await view.render(); assert.equal(controls(), 'false');
+    settings.music = false; await view.render(); assert.equal(controls(), 'false');
+    await act(async () => { first.resolve(true); await flush(); }); assert.equal(controls(), 'false');
+    await act(async () => { second.resolve(true); await flush(); }); assert.equal(controls(), 'true');
+  } finally { await view.close(); }
+}]);
 let failed = 0;
 for (const [name, run] of tests) { try { await run(); console.log('PASS: ' + name); } catch (error) { failed++; console.error('FAIL: ' + name, error); } }
 dom.window.close();
 assert.equal(failed, 0, failed + ' music session recovery checks failed');
-console.log('PASS: 7 actual-component music session recovery scenarios. Native/network/storage boundaries are fixtures; no device or production proof.');
+console.log('PASS: ' + tests.length + ' actual-component music session recovery scenarios. Native/network/storage boundaries are fixtures; no device or production proof.');
