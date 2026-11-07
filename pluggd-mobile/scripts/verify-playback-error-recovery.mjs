@@ -43,7 +43,7 @@ function load(path, mocks, timers) {
   assert.equal((result.diagnostics || []).filter((item) => item.category === ts.DiagnosticCategory.Error).length, 0);
   const module = { exports: {} };
   vm.runInNewContext(result.outputText, {
-    module, exports: module.exports, URL, Error, Set, Map, Promise, Date: timers.Date || Date, process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://project.supabase.co' } }, console: { ...console, warn() {} },
+    module, exports: module.exports, URL, Error, Set, Map, Promise, Date: timers.Date || Date, performance: { now: () => (timers.Date || Date).now() }, process: { env: { EXPO_PUBLIC_SUPABASE_URL: 'https://project.supabase.co' } }, console: { ...console, warn() {} },
     setTimeout: timers.set, clearTimeout: timers.clear,
     require(name) {
       if (name === 'react' || name === 'react/jsx-runtime') return require(name);
@@ -54,7 +54,7 @@ function load(path, mocks, timers) {
   return module.exports;
 }
 
-async function fixture({ strict = false } = {}) {
+async function fixture({ strict = false, realProgress = false } = {}) {
   const scheduled = new Map();
   let nextTimer = 0;
   const timers = {
@@ -64,7 +64,7 @@ async function fixture({ strict = false } = {}) {
   const f = {
     nativeQueue: [], index: 0, state: State.None, wantsPlayback: false,
     progress: { position: 0, duration: 180, buffered: 60 },
-    calls: [], alerts: [], appListeners: new Set(),
+    calls: [], alerts: [], appListeners: new Set(), progressReads: 0,
     retryImpl: async () => undefined,
     loadImpl: async () => undefined,
     resolve: async (track) => track,
@@ -79,13 +79,13 @@ async function fixture({ strict = false } = {}) {
     setupPlayer: async () => undefined,
     updateOptions: async () => undefined,
     getQueue: async () => [...f.nativeQueue],
-    reset: async () => { f.calls.push('reset'); f.nativeQueue = []; f.index = 0; f.progress.position = 0; },
+    reset: async () => { f.calls.push('reset'); f.nativeQueue = []; f.index = 0; f.progress.position = 0; f.progressHandler?.({ type: Event.PlaybackActiveTrackChanged }); },
     add: async (tracks) => { f.nativeQueue.push(...(Array.isArray(tracks) ? tracks : [tracks])); },
     play: async () => { f.calls.push('play'); f.wantsPlayback = true; f.state = State.Playing; },
     pause: async () => { f.calls.push('pause'); f.wantsPlayback = false; f.state = State.Paused; },
     retry: async () => { f.calls.push('retry'); return f.retryImpl(); },
     load: (track) => { f.calls.push('load'); f.nativeQueue[f.index] = track; f.progress.position = 0; return f.loadImpl(); },
-    getProgress: async () => ({ ...f.progress }),
+    getProgress: async () => { f.progressReads++; return { ...f.progress }; },
     getActiveTrackIndex: async () => f.index,
     getActiveTrack: async () => f.activeImpl ? f.activeImpl() : f.nativeQueue[f.index],
     getPlayWhenReady: async () => f.wantsPlayback,
@@ -105,13 +105,18 @@ async function fixture({ strict = false } = {}) {
     },
   };
   const recovery = load('../src/features/playback/playbackErrorRecovery.ts', {}, timers);
+  const progressHook = realProgress ? load('../node_modules/react-native-track-player/src/hooks/useProgress.ts', {
+    '../trackPlayer': player,
+    '../constants': { Event },
+    './useTrackPlayerEvents': { useTrackPlayerEvents: (_events, listener) => { f.progressHandler = listener; } },
+  }, timers).useProgress : () => f.progress;
   const provider = load('../src/context/PlaybackProvider.tsx', {
     'react-native': { Alert: { alert: (...args) => f.alerts.push(args) }, AppState: appState, Platform: { OS: 'ios', Version: 27 } },
     'react-native-track-player': {
       default: player, Event, State, Capability: {}, RepeatMode: { Off: 'off', Queue: 'queue', Track: 'track' },
       IOSCategory: { Playback: 'playback' }, AppKilledPlaybackBehavior: {},
       usePlaybackState: () => ({ state: f.state }),
-      useProgress: () => f.progress,
+      useProgress: progressHook,
       useActiveTrack: () => f.nativeQueue[f.index],
       useTrackPlayerEvents: (events, listener) => { f.events = events; f.handler = listener; },
     },
@@ -644,6 +649,83 @@ test('pause during initial protected source resolution cannot later start playba
   await act(async () => { read.resolve(source.result); await starting; });
   assert.deepEqual(f.calls, ['pause']);
 }));
+
+test('actual progress polling reduces background work and resumes foreground updates without controlling native playback', async () => {
+  const f = await fixture({ realProgress: true });
+  try {
+    f.calls.length = 0;
+    await f.app('background');
+    let reads = f.progressReads;
+    for (let i = 0; i < 16; i++) {
+      f.progress.position += 0.25;
+      await f.advance(250);
+    }
+    const backgroundReads = f.progressReads - reads;
+    assert.ok(backgroundReads >= 3 && backgroundReads <= 4, `background reads: ${backgroundReads}`);
+    assert.ok(f.value.progress.position >= 40, 'recovery snapshots continue advancing in background');
+    await f.app('active');
+    reads = f.progressReads;
+    for (let i = 0; i < 4; i++) {
+      f.progress.position += 0.25;
+      await f.advance(250);
+    }
+    assert.equal(f.progressReads - reads, 4, 'foreground restores smooth progress immediately');
+    assert.deepEqual(f.calls, [], 'AppState changes never pause, seek, reset or restart native playback');
+    const source = await protectedQueue(f);
+    await f.app('background');
+    f.progress.position = 73;
+    await f.advance(1000);
+    assert.equal(f.value.progress.position, 73);
+    source.result = { data: { signedUrl: protectedTrack.url + '-fresh-background', expiresIn: 300 }, error: null };
+    f.now += 301000;
+    f.progress.position = 0;
+    await f.error('ios_failed_to_load_resource');
+    await f.advance();
+    assert.deepEqual(f.calls, ['load', 'seek']);
+    assert.equal(f.progress.position, 73, 'failed native zero restores the last background snapshot');
+  } finally { await f.close(); }
+});
+
+test('a seek followed by backgrounding retains later progress when the first confirmation sample has advanced', async () => {
+  const f = await fixture({ realProgress: true });
+  try {
+    const source = await protectedQueue(f);
+    await act(async () => f.value.seekTo(30));
+    f.now += 1000;
+    f.progress.position = 31;
+    await f.app('background');
+    f.progress.position = 73;
+    await f.advance(42000);
+    assert.equal(f.value.progress.position, 73);
+    f.calls.length = 0;
+    source.result = { data: { signedUrl: protectedTrack.url + '-fresh-after-seek', expiresIn: 300 }, error: null };
+    f.now += 301000;
+    f.progress.position = 0;
+    await f.error('ios_failed_to_load_resource');
+    await f.advance();
+    assert.deepEqual(f.calls, ['load', 'seek']);
+    assert.equal(f.progress.position, 73, 'recovery uses later playback, not the old seek target');
+  } finally { await f.close(); }
+});
+
+test('a far stale pre-seek sample cannot overwrite the requested recovery position', async () => {
+  const f = await fixture({ realProgress: true });
+  try {
+    const source = await protectedQueue(f);
+    await act(async () => f.value.seekTo(30));
+    f.now += 1000;
+    f.progress.position = 100;
+    await f.app('background');
+    f.calls.length = 0;
+    source.result = { data: { signedUrl: protectedTrack.url + '-fresh-stale-rejected', expiresIn: 300 }, error: null };
+    f.now += 301000;
+    f.progress.position = 0;
+    await f.error('ios_failed_to_load_resource');
+    await f.advance();
+    assert.deepEqual(f.calls, ['load', 'seek']);
+    assert.equal(f.progress.position, 30, 'the far stale sample never confirms the pending seek');
+  } finally { await f.close(); }
+});
 
 let failures = 0;
 for (const { name, run } of tests) {

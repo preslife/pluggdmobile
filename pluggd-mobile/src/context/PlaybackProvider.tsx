@@ -207,12 +207,13 @@ async function setupPlayer(): Promise<boolean> {
 // ─── Provider ─────────────────────────────────────────────────────────
 export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
+  const [progressInterval, setProgressInterval] = useState(() => AppState.currentState === 'active' ? 250 : 1000);
   const [queue, setQueue] = useState<PluggdTrack[]>([]);
   const [shuffleMode, setShuffleMode] = useState<ShuffleMode>('off');
   const [repeatMode, setRepeatModeState] = useState<RepeatMode>(RepeatMode.Off);
   const originalQueue = useRef<PluggdTrack[]>([]);
   const playbackRequestRef = useRef(0);
-  const retainedPosition = useRef({ trackId: '', position: 0, seekTarget: null as number | null });
+  const retainedPosition = useRef({ trackId: '', position: 0, seekTarget: null as number | null, seekStartedAt: 0 });
   const recoveryRef = useRef<ReturnType<typeof createPlaybackErrorRecovery> | null>(null);
   if (!recoveryRef.current) {
     recoveryRef.current = createPlaybackErrorRecovery({
@@ -237,7 +238,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const recovery = recoveryRef.current;
 
   const playbackState = usePlaybackState();
-  const progress = useProgress(250); // update every 250ms
+  // Background snapshots retain recovery position without refreshing every mounted screen at 4 Hz.
+  // Native playback and lock-screen progress do not depend on this UI polling interval.
+  const progress = useProgress(progressInterval);
   const activeTrack = useActiveTrack();
   const positionSnapshot = retainedPosition.current;
   const activeId = String(activeTrack?.id ?? '');
@@ -247,7 +250,12 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     positionSnapshot.seekTarget = null;
   }
   if (positionSnapshot.seekTarget !== null) {
-    if (Math.abs(progress.position - positionSnapshot.seekTarget) < 0.5) {
+    // A background sample can arrive after playback has moved beyond the target.
+    // Allow elapsed playback time, while rejecting stale samples far ahead of a new seek.
+    const elapsed = Math.max(0, performance.now() - positionSnapshot.seekStartedAt) / 1000;
+    if (Number.isFinite(progress.position)
+      && progress.position >= positionSnapshot.seekTarget - 0.5
+      && progress.position <= positionSnapshot.seekTarget + elapsed + 0.5) {
       positionSnapshot.position = progress.position;
       positionSnapshot.seekTarget = null;
     }
@@ -285,7 +293,10 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     recovery.activate();
-    const subscription = AppState.addEventListener('change', () => recovery.showPendingFailure());
+    const subscription = AppState.addEventListener('change', (state) => {
+      setProgressInterval(state === 'active' ? 250 : 1000);
+      recovery.showPendingFailure();
+    });
     return () => {
       subscription.remove();
       recovery.dispose();
@@ -321,6 +332,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       const request = ++playbackRequestRef.current;
       retainedPosition.current.position = 0;
       retainedPosition.current.seekTarget = 0;
+      retainedPosition.current.seekStartedAt = performance.now();
       const playable = await resolvePlaybackTrack(track);
       if (request !== playbackRequestRef.current) return null;
       if (!isPlayableTrack(playable)) {
@@ -349,6 +361,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       const request = ++playbackRequestRef.current;
       retainedPosition.current.position = 0;
       retainedPosition.current.seekTarget = 0;
+      retainedPosition.current.seekStartedAt = performance.now();
       const requestedTrack = tracks[Math.min(Math.max(startIndex, 0), tracks.length - 1)] ?? null;
       const resolved = await Promise.all(tracks.map((track) => resolvePlaybackTrack(track)));
       if (request !== playbackRequestRef.current) return null;
@@ -408,6 +421,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     playbackRequestRef.current++;
     retainedPosition.current.position = 0;
     retainedPosition.current.seekTarget = 0;
+    retainedPosition.current.seekStartedAt = performance.now();
     recovery.cancel();
     try {
       await TrackPlayer.skipToNext();
@@ -420,6 +434,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     playbackRequestRef.current++;
     retainedPosition.current.position = 0;
     retainedPosition.current.seekTarget = 0;
+    retainedPosition.current.seekStartedAt = performance.now();
     recovery.cancel();
     // If more than 3s in, restart current track instead
     if (progress.position > 3) {
@@ -439,6 +454,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     playbackRequestRef.current++;
     retainedPosition.current.position = 0;
     retainedPosition.current.seekTarget = 0;
+    retainedPosition.current.seekStartedAt = performance.now();
     recovery.cancel();
     try {
       await TrackPlayer.skip(index);
@@ -453,6 +469,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
     recovery.cancel();
     retainedPosition.current.position = position;
     retainedPosition.current.seekTarget = position;
+    retainedPosition.current.seekStartedAt = performance.now();
     await TrackPlayer.seekTo(position);
   }, [recovery]);
 
