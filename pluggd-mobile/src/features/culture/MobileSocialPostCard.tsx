@@ -24,6 +24,8 @@ import { showReportActions } from '../safety/reportActions';
 import { MobileSocialMediaViewer, type MobileSocialMediaSelection } from './MobileSocialMediaViewer';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { useAuth } from '../../context/AuthProvider';
+import { MobileSocialInlineVideo } from './MobileSocialInlineVideo';
+import { useSuspendInlineVideos } from './useInlineVideoVisibility';
 
 type MobileSocialPostCardProps = {
   post: MobileSocialPost;
@@ -192,29 +194,9 @@ function MediaGrid({
   );
 }
 
-function VideoAttachment({ post, onOpen }: { post: MobileSocialPostPreview; onOpen: () => void }) {
-  const styles = usePostStyles();
-  const theme = usePluggdTheme();
+function VideoAttachment({ post, onOpen, blocked }: { post: MobileSocialPostPreview; onOpen: () => void; blocked: boolean }) {
   if (!post.video) return null;
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Open attached video full screen"
-      style={styles.videoCard}
-      onPress={(event) => {
-        event.stopPropagation();
-        selectionHaptic();
-        onOpen();
-      }}
-    >
-      <MaterialIcons name="smart-display" size={24} color={theme.colors.text} />
-      <View style={styles.videoCopy}>
-        <Text style={styles.embedTitle}>Video attached</Text>
-        <Text style={styles.embedMeta} numberOfLines={1}>Tap to view the full video.</Text>
-      </View>
-      <MaterialIcons name="open-in-full" size={20} color={theme.colors.textMuted} />
-    </Pressable>
-  );
+  return <MobileSocialInlineVideo uri={post.video} blocked={blocked} onFullscreen={onOpen} />;
 }
 
 function AudioAttachment({ post }: { post: MobileSocialPostPreview }) {
@@ -376,6 +358,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [mediaSelection, setMediaSelection] = useState<MobileSocialMediaSelection>(null);
+  useSuspendInlineVideos(mediaSelection !== null);
   const [deleting, setDeleting] = useState(false);
   const displayName = displayNameFor(post);
   const publicMeta = [post.username ? `@${post.username}` : null, formatDate(post.created_at)].filter(Boolean).join(' · ');
@@ -509,7 +492,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
           {!compact ? (
             <>
               <MediaGrid post={post} expanded={variant === 'thread'} onOpen={(index) => setMediaSelection({ kind: 'image', index })} />
-              <VideoAttachment post={post} onOpen={() => setMediaSelection({ kind: 'video' })} />
+              <VideoAttachment post={post} blocked={mediaSelection !== null} onOpen={() => setMediaSelection({ kind: 'video' })} />
               <PostMusicAttribution music={post.music} />
               <AudioAttachment post={post} />
               <LinkPreview post={post} />

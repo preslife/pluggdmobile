@@ -21,7 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   owner: 'pluggd-ltd',
   slug: 'pluggd',
   scheme: 'pluggd',
-  version: '1.0.0',
+  version: '1.0.1',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
@@ -34,7 +34,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: false,
     requireFullScreen: true,
     usesAppleSignIn: true,
-    buildNumber: process.env.IOS_BUILD_NUMBER ?? '25',
+    buildNumber: process.env.IOS_BUILD_NUMBER ?? '26',
     bundleIdentifier: 'com.pluggd.mobile',
     entitlements: {
       'aps-environment': IS_PRODUCTION ? 'production' : 'development',
