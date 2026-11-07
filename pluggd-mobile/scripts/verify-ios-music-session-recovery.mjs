@@ -51,12 +51,14 @@ async function mount(Component) {
   await act(async () => { root.render(React.createElement(Component)); await flush(); });
   return { container, render: async () => { await act(async () => { root.render(React.createElement(Component)); await flush(); }); }, close: async () => { await act(async () => root.unmount()); container.remove(); timers.clear(); appState.listeners.clear(); appState.currentState = 'active'; auth.session.access_token = 'token-a'; } };
 }
-function viewer(make, playback) {
+function viewer(make, playback, settings = {}) {
+  const preference = settings.preference || { muted: false };
   return load('../src/features/culture/MobileSocialMediaViewer.tsx', {
     '@expo/vector-icons': { MaterialIcons: () => null }, 'expo-status-bar': { StatusBar: () => null }, 'expo-video': videoMock(make),
     'react-native': rn, 'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
     '../../components/PluggdImage': { Image: Box, PluggdImage: Box }, '../../design/typography': { pluggdFonts: {} },
-    '../../context/AuthProvider': { useAuth: () => auth }, '../../context/PlaybackProvider': { usePlayback: () => ({ pause: pauseGlobal }) },
+    '../../context/AuthProvider': { useAuth: () => auth }, '../../context/PlaybackProvider': { usePlayback: () => ({ pause: settings.pause || pauseGlobal }) },
+    './inlineVideoSoundPreference': { hydrateInlineVideoSoundPreference: async () => {}, setInlineVideoUserMuted: async muted => { preference.muted = muted; }, useInlineVideoSoundPreference: { getState: () => preference } },
     '../social-music/model': { musicError: e => e.message, musicPostId: () => 'private-post' }, '../social-music/service': { musicPlayback: playback },
   }, '\nmodule.exports.TestVideo = SessionVideo;').TestVideo;
 }
@@ -127,8 +129,29 @@ for (const delay of [100, 800, 'token-refresh', 'token-refresh-success']) tests.
     }
   } finally { await view.close(); }
 }]);
+tests.push(['fullscreen inherits mute and native sound changes preserve the preference and music ownership', async () => {
+  const events = {}; const preference = { muted: true }; let pauses = 0;
+  const native = { ...player(), playing: true, addListener: (name, listener) => { events[name] = listener; return { remove: noop }; } };
+  const Video = viewer(() => native, async () => 'https://private/fresh', { preference, pause: async () => { pauses++; } });
+  const view = await mount(() => React.createElement(Video, { uri: 'private' }));
+  try {
+    assert.equal(native.muted, true);
+    assert.equal(native.audioMixingMode, 'mixWithOthers');
+    await act(async () => events.playingChange({ isPlaying: true }));
+    assert.equal(pauses, 0, 'a muted fullscreen video preserves existing music');
+    native.muted = false;
+    await act(async () => events.mutedChange({ muted: false }));
+    assert.equal(preference.muted, false);
+    assert.equal(native.audioMixingMode, 'doNotMix');
+    assert.equal(pauses, 1, 'explicit fullscreen sound hands music to video');
+    native.muted = true;
+    await act(async () => events.mutedChange({ muted: true }));
+    assert.equal(preference.muted, true);
+    assert.equal(native.audioMixingMode, 'mixWithOthers');
+  } finally { await view.close(); }
+}]);
 let failed = 0;
 for (const [name, run] of tests) { try { await run(); console.log('PASS: ' + name); } catch (error) { failed++; console.error('FAIL: ' + name, error); } }
 dom.window.close();
 assert.equal(failed, 0, failed + ' music session recovery checks failed');
-console.log('PASS: 6 actual-component music session recovery scenarios. Native/network/storage boundaries are fixtures; no device or production proof.');
+console.log('PASS: 7 actual-component music session recovery scenarios. Native/network/storage boundaries are fixtures; no device or production proof.');

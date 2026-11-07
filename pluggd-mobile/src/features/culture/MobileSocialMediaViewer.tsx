@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { musicError, musicPostId } from '../social-music/model';
 import { musicPlayback } from '../social-music/service';
+import { hydrateInlineVideoSoundPreference, setInlineVideoUserMuted, useInlineVideoSoundPreference } from './inlineVideoSoundPreference';
 
 export type MobileSocialMediaSelection =
   | { kind: 'image'; index: number }
@@ -40,9 +41,10 @@ function SessionVideo({ uri }: { uri: string }) {
   const [retry, setRetry] = useState(0);
   const replacement = useRef<Promise<void>>(Promise.resolve());
   const player = useVideoPlayer(null, (instance) => {
+    instance.muted = true;
     instance.loop = false;
     instance.staysActiveInBackground = false;
-    instance.audioMixingMode = 'doNotMix';
+    instance.audioMixingMode = 'mixWithOthers';
   });
   useEffect(() => {
     let active = true;
@@ -69,14 +71,22 @@ function SessionVideo({ uri }: { uri: string }) {
       const current = () => active && foreground && request === generation;
       setSource(null); setError(''); player.pause();
       void (async () => {
+        await hydrateInlineVideoSoundPreference();
+        if (!current()) return;
         const next = postId ? await musicPlayback(postId, signal) : uri;
         if (!current()) return;
         await replace(next, current);
-        if (current()) { sourceReady = true; setSource(next); }
+        if (current()) { player.muted = useInlineVideoSoundPreference.getState().muted; player.audioMixingMode = player.muted ? 'mixWithOthers' : 'doNotMix'; sourceReady = true; setSource(next); }
       })().catch(error => { if (current()) setError(musicError(error)); });
     };
     if (foreground) load();
-    const playing = player.addListener('playingChange', event => { if (event.isPlaying) void pause(); });
+    const playing = player.addListener('playingChange', event => { if (event.isPlaying && !player.muted) void pause(); });
+    const muted = player.addListener('mutedChange', event => {
+      if (!active || !foreground || !sourceReady) return;
+      player.audioMixingMode = event.muted ? 'mixWithOthers' : 'doNotMix';
+      void setInlineVideoUserMuted(event.muted);
+      if (!event.muted && player.playing) void pause();
+    });
     const status = player.addListener('statusChange', event => { if (event.status === 'error' && active && foreground && sourceReady) setError('This video could not be played. Please try again.'); });
     const background = AppState.addEventListener('change', state => {
       foreground = state === 'active';
@@ -88,7 +98,7 @@ function SessionVideo({ uri }: { uri: string }) {
       } else if (active) load();
     });
     // The hook stops/releases its native player on unmount; it may already be released here.
-    return () => { active = false; invalidate(); playing.remove(); status.remove(); background.remove(); };
+    return () => { active = false; invalidate(); playing.remove(); muted.remove(); status.remove(); background.remove(); };
   }, [uri, retry, player, pause]);
   if (error) return <View style={[styles.media, { alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }]}>
     <Text accessibilityRole="alert" style={{ color: '#FFFFFF', textAlign: 'center' }}>{error}</Text>

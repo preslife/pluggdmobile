@@ -1,7 +1,7 @@
 diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-video/ios/VideoManager.swift
 --- a/node_modules/expo-video/ios/VideoManager.swift
 +++ b/node_modules/expo-video/ios/VideoManager.swift
-@@ -14,6 +14,22 @@
+@@ -14,6 +14,34 @@
    private var videoViews = NSHashTable<VideoView>.weakObjects()
    private var videoPlayers = NSHashTable<VideoPlayer>.weakObjects()
  
@@ -21,10 +21,22 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
 +  private var previousAudioSession: AudioSessionState?
 +  private var lastVideoAudioSession: AudioSessionState?
 +
++  private var secondaryAudioObserver: NSObjectProtocol?
++
++  init() {
++    secondaryAudioObserver = NotificationCenter.default.addObserver(
++      forName: AVAudioSession.silenceSecondaryAudioHintNotification, object: nil, queue: nil
++    ) { [weak self] _ in self?.setAppropriateAudioSessionOrWarn() }
++  }
++
++  deinit {
++    if let secondaryAudioObserver = secondaryAudioObserver { NotificationCenter.default.removeObserver(secondaryAudioObserver) }
++  }
++
    var hasRegisteredPlayers: Bool {
      return !videoPlayers.allObjects.isEmpty
    }
-@@ -29,10 +45,14 @@
+@@ -29,10 +57,14 @@
  
    func unregister(videoPlayer: VideoPlayer) {
      Self.managerQueue.async { [weak self, weak videoPlayer] in
@@ -41,16 +53,50 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
      }
    }
  
-@@ -86,6 +106,26 @@
+@@ -55,6 +87,7 @@
+         player.ref.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
+       } else if !videoView.playerViewController.isInPictureInPicture {
+         player.ref.audiovisualBackgroundPlaybackPolicy = .pauses
++        player.invalidateAutomaticAudio()
+         player.ref.pause()
+       }
+     }
+@@ -75,9 +108,21 @@
+     let audioMixingMode = findAudioMixingMode()
+     var audioSessionCategoryOptions: AVAudioSession.CategoryOptions = audioSession.categoryOptions
+ 
+-    let isOutputtingAudio = videoPlayers.allObjects.contains { player in
+-      player.isPlaying && !player.isMuted
+-    }
++    let otherAudio = audioSession.isOtherAudioPlaying || audioSession.secondaryAudioShouldBeSilencedHint
++    // Auto previews never take audio from another app, including audio started during loading.
++    if otherAudio {
++      for player in videoPlayers.allObjects where player.usesAmbientAudio && (player.isPlaying || player.automaticPlaybackRequested) && !player.isMuted {
++        DispatchQueue.main.async { [weak player] in
++          guard let player = player, player.usesAmbientAudio, (player.isPlaying || player.automaticPlaybackRequested), !player.isMuted else { return }
++          let session = AVAudioSession.sharedInstance()
++          if session.isOtherAudioPlaying || session.secondaryAudioShouldBeSilencedHint { player.isMuted = true }
++        }
++      }
++    }
++    let audiblePlayers = videoPlayers.allObjects.filter { player in
++      (player.isPlaying || player.automaticPlaybackRequested) && !player.isMuted && !(player.usesAmbientAudio && otherAudio)
++    }
++    let isOutputtingAudio = !audiblePlayers.isEmpty
+     let anyPlayerShowsNotification = videoPlayers.allObjects.contains { player in
+       player.showNowPlayingNotification
+     }
+@@ -85,6 +130,26 @@
+     let shouldMixOverride = audioMixingMode == .mixWithOthers
      let doNotMixOverride = audioMixingMode == .doNotMix
      let shouldDuckOthers = audioMixingMode == .duckOthers && isOutputtingAudio
- 
++
 +    // A silent preview never claims the shared session. If video owned it,
 +    // restore its predecessor only while no newer audio owner has changed it.
 +    if !isOutputtingAudio && !anyPlayerShowsNotification && !doNotMixOverride {
 +      if let previous = previousAudioSession,
 +        let lastVideo = lastVideoAudioSession,
-+        AudioSessionState(audioSession) == lastVideo {
++        AudioSessionState(audioSession) == lastVideo, !otherAudio {
 +        do {
 +          try audioSession.setCategory(previous.category, mode: previous.mode, policy: previous.policy, options: previous.options)
 +        } catch {
@@ -64,15 +110,210 @@ diff --git a/node_modules/expo-video/ios/VideoManager.swift b/node_modules/expo-
 +    if previousAudioSession == nil {
 +      previousAudioSession = AudioSessionState(audioSession)
 +    }
-+
+ 
      // The now playing notification won't be shown if we allow the audio to mix with others
      let autoShouldMix = !isOutputtingAudio && !anyPlayerShowsNotification
-     let shouldMixWithOthers = shouldMixOverride || autoShouldMix
-@@ -118,6 +158,7 @@
+@@ -102,11 +167,25 @@
+       audioSessionCategoryOptions.remove(.duckOthers)
+     }
+ 
+-    if audioSession.categoryOptions != audioSessionCategoryOptions || audioSession.category != .playback || audioSession.mode != .moviePlayback {
++    let ambientOnly = isOutputtingAudio && !anyPlayerShowsNotification && !doNotMixOverride
++      && audiblePlayers.allSatisfy { $0.usesAmbientAudio }
++    let category: AVAudioSession.Category = ambientOnly ? .ambient : .playback
++    let mode: AVAudioSession.Mode = ambientOnly ? .default : .moviePlayback
++    if ambientOnly { audioSessionCategoryOptions = [] }
++    if audioSession.categoryOptions != audioSessionCategoryOptions || audioSession.category != category || audioSession.mode != mode {
+       do {
+-        try audioSession.setCategory(.playback, mode: .moviePlayback, options: audioSessionCategoryOptions)
++        try audioSession.setCategory(category, mode: mode, options: audioSessionCategoryOptions)
+       } catch {
+         log.warn("Failed to set audio session category. This might cause issues with audio playback and Picture in Picture. \(error.localizedDescription)")
++        if ambientOnly {
++          for player in audiblePlayers {
++            DispatchQueue.main.async { [weak player] in
++              guard let player = player, player.usesAmbientAudio else { return }
++              player.isMuted = true
++            }
++          }
++          return // Never activate an old playback category for an automatic preview.
++        }
+       }
+     }
+ 
+@@ -118,6 +197,44 @@
          log.warn("Failed to activate the audio session. This might cause issues with audio playback. \(error.localizedDescription)")
        }
      }
 +    lastVideoAudioSession = AudioSessionState(audioSession)
++  }
++
++  // Preflight and start are one ordered operation. A queued UI mute/pause,
++  // replacement, background transition or explicit sound request invalidates it.
++  func playAutomaticPreview(_ player: VideoPlayer, completion: @escaping (Bool) -> Void) {
++    let request = player.automaticAudioRevision
++    Self.managerQueue.async { [weak self, weak player] in
++      guard let self = self, let player = player else { completion(false); return }
++      let session = AVAudioSession.sharedInstance()
++      let otherAudio = session.isOtherAudioPlaying || session.secondaryAudioShouldBeSilencedHint
++      let mediaOwner = self.videoPlayers.allObjects.contains { $0 !== player && (($0.isPlaying && !$0.isMuted && !$0.usesAmbientAudio) || $0.showNowPlayingNotification) }
++      var foreground = false
++      DispatchQueue.main.sync { foreground = UIApplication.shared.applicationState == .active }
++      var prepared: AudioSessionState?
++      if foreground && !otherAudio && !mediaOwner && player.automaticAudioRevision == request && player.usesAmbientAudio {
++        if self.previousAudioSession == nil { self.previousAudioSession = AudioSessionState(session) }
++        do {
++          // Ambient mixes implicitly. The mixWithOthers option is not valid for this category.
++          try session.setCategory(.ambient, mode: .default, options: [])
++          try session.setActive(true)
++          prepared = AudioSessionState(session)
++          self.lastVideoAudioSession = prepared
++        } catch { log.warn("Automatic video audio could not be prepared. \(error.localizedDescription)") }
++      }
++      var audible = false
++      DispatchQueue.main.sync {
++        _ = player.startAutomaticAudioIfCurrent(request) {
++          guard player.usesAmbientAudio, UIApplication.shared.applicationState == .active else { return }
++          audible = prepared != nil && AudioSessionState(session) == prepared
++            && !session.isOtherAudioPlaying && !session.secondaryAudioShouldBeSilencedHint
++          player.automaticPlaybackRequested = audible
++          player.isMuted = !audible
++          player.ref.play()
++        }
++      }
++      completion(audible)
++    }
    }
  
    private func findAudioMixingMode() -> AudioMixingMode? {
+diff --git a/node_modules/expo-video/ios/VideoModule.swift b/node_modules/expo-video/ios/VideoModule.swift
+--- a/node_modules/expo-video/ios/VideoModule.swift
++++ b/node_modules/expo-video/ios/VideoModule.swift
+@@ -9,6 +9,11 @@
+ 
+     Function("isPictureInPictureSupported") { () -> Bool in
+       return AVPictureInPictureController.isPictureInPictureSupported()
++    }
++
++    Function("isOtherAudioPlaying") { () -> Bool in
++      let session = AVAudioSession.sharedInstance()
++      return session.isOtherAudioPlaying || session.secondaryAudioShouldBeSilencedHint
+     }
+ 
+     Function("getCurrentVideoCacheSize") {
+@@ -266,6 +271,13 @@
+         player.bufferOptions = bufferOptions
+       }
+ 
++      Property("usesAmbientAudio") { player -> Bool in
++        return player.usesAmbientAudio
++      }
++      .set { (player, automatic: Bool) in
++        player.usesAmbientAudio = automatic
++      }
++
+       Property("audioMixingMode") { player -> AudioMixingMode in
+         return player.audioMixingMode
+       }
+@@ -314,11 +326,16 @@
+         player.ref.preventsDisplaySleepDuringVideoPlayback = keepScreenOnWhilePlaying
+       }
+ 
++      AsyncFunction("playAutomaticPreview") { (player: VideoPlayer, promise: Promise) in
++        VideoManager.shared.playAutomaticPreview(player) { audible in promise.resolve(audible) }
++      }
++
+       Function("play") { player in
+         player.ref.play()
+       }
+ 
+       Function("pause") { player in
++        player.invalidateAutomaticAudio()
+         player.ref.pause()
+       }
+ 
+diff --git a/node_modules/expo-video/ios/VideoPlayer.swift b/node_modules/expo-video/ios/VideoPlayer.swift
+--- a/node_modules/expo-video/ios/VideoPlayer.swift
++++ b/node_modules/expo-video/ios/VideoPlayer.swift
+@@ -20,6 +20,34 @@
+       }
+     }
+   }
++  // Only automatic inline previews use ambient audio; explicit media keeps playback behaviour.
++  private let automaticAudioLock = NSRecursiveLock()
++  private var automaticRevision = 0
++  private var automaticReleased = false
++  private var automaticRequested = false
++  var automaticAudioRevision: Int {
++    automaticAudioLock.lock(); defer { automaticAudioLock.unlock() }; return automaticRevision
++  }
++  var automaticPlaybackRequested: Bool {
++    get { automaticAudioLock.lock(); defer { automaticAudioLock.unlock() }; return automaticRequested }
++    set { automaticAudioLock.lock(); defer { automaticAudioLock.unlock() }; automaticRequested = newValue }
++  }
++  func invalidateAutomaticAudio(releasing: Bool = false) {
++    automaticAudioLock.lock(); defer { automaticAudioLock.unlock() }
++    automaticRevision += 1; automaticRequested = false
++    if releasing { automaticReleased = true }
++  }
++  func startAutomaticAudioIfCurrent(_ request: Int, action: () -> Void) -> Bool {
++    automaticAudioLock.lock(); defer { automaticAudioLock.unlock() }
++    guard !automaticReleased, automaticRevision == request else { return false }
++    action(); return true
++  }
++  var usesAmbientAudio = false {
++    didSet {
++      if !usesAmbientAudio { invalidateAutomaticAudio() }
++      if oldValue != usesAmbientAudio { VideoManager.shared.setAppropriateAudioSessionOrWarn() }
++    }
++  }
+   private(set) var isPlaying = false
+   private(set) var status: PlayerStatus = .idle
+ 
+@@ -82,6 +110,7 @@
+ 
+   var isMuted: Bool = false {
+     didSet {
++      if isMuted { invalidateAutomaticAudio() }
+       if oldValue != isMuted {
+         let payload = MutedChangedEventPayload(muted: isMuted, oldMuted: oldValue)
+         safeEmit(event: "mutedChange", payload: payload)
+@@ -178,6 +207,14 @@
+     ref.setMediaSelectionCriteria(selectionCriteria, forMediaCharacteristic: .legible)
+   }
+ 
++  override func sharedObjectWillRelease() {
++    // Registry release can precede deinit while an asynchronous operation retains us.
++    invalidateAutomaticAudio(releasing: true)
++    DispatchQueue.main.async { [ref] in ref.isMuted = true; ref.pause() }
++    VideoManager.shared.unregister(videoPlayer: self)
++    super.sharedObjectWillRelease()
++  }
++
+   deinit {
+     observer?.cleanup()
+     NowPlayingManager.shared.unregisterPlayer(self)
+@@ -194,6 +231,7 @@
+   }
+ 
+   func replaceCurrentItem(with videoSource: VideoSource?) throws {
++    invalidateAutomaticAudio()
+     dangerousPropertiesStore.ownerIsReplacing = true
+     videoSourceLoader.cancelCurrentTask()
+     guard
+@@ -234,6 +272,7 @@
+    * Replaces the current item, while loading the AVAsset on a different thread. The synchronous version can lock the main thread for extended periods of time.
+    */
+   func replaceCurrentItem(with videoSource: VideoSource?) async throws {
++    invalidateAutomaticAudio()
+     guard let videoSource, videoSource.uri != nil else {
+       clearCurrentItem()
+       return
+@@ -301,6 +340,7 @@
+     let payload = StatusChangedEventPayload(status: newStatus, oldStatus: oldStatus, error: errorRecord)
+     safeEmit(event: "statusChange", payload: payload)
+     status = newStatus
++    if newStatus == .error { invalidateAutomaticAudio() }
+   }
+ 
+   func onIsPlayingChanged(player: AVPlayer, oldIsPlaying: Bool?, newIsPlaying: Bool) {

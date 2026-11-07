@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
@@ -9,6 +9,8 @@ import { pluggdFonts } from '../../design/typography';
 import { musicPostId } from '../social-music/model';
 import { musicPlayback } from '../social-music/service';
 import { useInlineVideoVisibility } from './useInlineVideoVisibility';
+import { otherAudioPreventsInlineAutoplay, playInlineVideoAutomatic, setInlineVideoAutomaticAudio } from './inlineVideoAudio';
+import { hydrateInlineVideoSoundPreference, setInlineVideoUserMuted, useInlineVideoSoundPreference } from './inlineVideoSoundPreference';
 
 type Props = { uri: string; blocked: boolean; onFullscreen: () => void };
 
@@ -27,11 +29,21 @@ function InlineVideo({ uri, blocked, onFullscreen }: Props) {
   const visibility = useInlineVideoVisibility(blocked);
   const [autoplay, setAutoplay] = useState(false);
   const [requested, setRequested] = useState(false);
+  const manualPlayRequested = useRef(false);
+  const claimManualPlay = useCallback(() => {
+    const requested = manualPlayRequested.current;
+    manualPlayRequested.current = false;
+    return requested;
+  }, []);
+  useEffect(() => {
+    if (!visibility.active) { setRequested(false); manualPlayRequested.current = false; }
+  }, [visibility.active]);
+  const [screenReaderEnabled, setScreenReaderEnabled] = useState(true);
   useEffect(() => {
     let live = true;
     let reduce = true;
     let reader = true;
-    const update = () => { if (live) setAutoplay(!reduce && !reader); };
+    const update = () => { if (live) { setAutoplay(!reduce && !reader); setScreenReaderEnabled(reader); } };
     void Promise.all([AccessibilityInfo.isReduceMotionEnabled(), AccessibilityInfo.isScreenReaderEnabled()]).then(([motion, screenReader]) => {
       reduce = motion; reader = screenReader; update();
     }).catch(() => undefined);
@@ -40,16 +52,19 @@ function InlineVideo({ uri, blocked, onFullscreen }: Props) {
     return () => { live = false; motion.remove(); screenReader.remove(); };
   }, []);
   return <View ref={visibility.view} collapsable={false} style={[styles.frame, { backgroundColor: theme.colors.artworkBase }]}>
-    {visibility.active && (autoplay || requested) ? <InlinePlayer uri={uri} onFullscreen={onFullscreen} /> : <>
+    {visibility.active && (autoplay || requested) ? <InlinePlayer uri={uri} onFullscreen={onFullscreen} claimManualPlay={claimManualPlay} screenReader={screenReaderEnabled} /> : <>
       <Pressable accessibilityRole="button" accessibilityLabel="Play video in this post" style={styles.center} onPress={event => {
-        event.stopPropagation(); setRequested(true); visibility.requestPlay();
+        event.stopPropagation(); manualPlayRequested.current = true; setRequested(true); visibility.requestPlay();
       }}><MaterialIcons name="play-circle-outline" size={48} color={theme.colors.text} /></Pressable>
     </>}
   </View>;
 }
 
-function InlinePlayer({ uri, onFullscreen }: Pick<Props, 'uri' | 'onFullscreen'>) {
-  const { pause, isPlaying: musicPlaying } = usePlayback();
+function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick<Props, 'uri' | 'onFullscreen'> & { claimManualPlay: () => boolean; screenReader: boolean }) {
+  const { pause, isPlaying: musicPlaying, isBuffering, currentTrack } = usePlayback();
+  const musicActive = musicPlaying || isBuffering;
+  const musicTrackKey = `${currentTrack?.id ?? ''}:${currentTrack?.url ?? ''}`;
+  const previousMusic = useRef({ playing: musicActive, trackKey: musicTrackKey });
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
@@ -57,12 +72,20 @@ function InlinePlayer({ uri, onFullscreen }: Pick<Props, 'uri' | 'onFullscreen'>
   const [duration, setDuration] = useState(0);
   const [retry, setRetry] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(false);
+  const [controlInteraction, setControlInteraction] = useState(0);
+  const musicState = useRef(musicActive);
+  musicState.current = musicActive;
+  const userMuted = useInlineVideoSoundPreference(state => state.muted);
+  const automaticAudio = useRef(true);
+  const manualPlay = useRef<boolean | null>(null);
   const alive = useRef(true);
   const soundRequest = useRef(0);
   const seekWidth = useRef(0);
   const replacement = useRef<Promise<void>>(Promise.resolve());
   const player = useVideoPlayer(null, instance => {
     instance.muted = true;
+    setInlineVideoAutomaticAudio(instance, true);
     instance.audioMixingMode = 'mixWithOthers';
     instance.loop = true;
     instance.staysActiveInBackground = false;
@@ -75,12 +98,16 @@ function InlinePlayer({ uri, onFullscreen }: Pick<Props, 'uri' | 'onFullscreen'>
     return () => { alive.current = false; soundRequest.current++; };
   }, []);
   useEffect(() => {
+    if (manualPlay.current === null) manualPlay.current = claimManualPlay();
+    const request = ++soundRequest.current;
     const controller = new AbortController();
     let current = true;
     setStatus('loading');
     const postId = musicPostId(uri);
     // Preserve the full-screen viewer's authorised music-video resolver.
     void (async () => {
+      await hydrateInlineVideoSoundPreference();
+      if (!current) return;
       const source = postId ? await musicPlayback(postId, controller.signal) : uri;
       if (!current) return;
       const work = replacement.current.catch(() => undefined).then(async () => {
@@ -88,7 +115,27 @@ function InlinePlayer({ uri, onFullscreen }: Pick<Props, 'uri' | 'onFullscreen'>
       });
       replacement.current = work;
       await work;
-      if (current) player.play();
+      if (!current) return;
+      if (request === soundRequest.current && !useInlineVideoSoundPreference.getState().muted) {
+        if (manualPlay.current) {
+          if (musicState.current) await pause();
+          if (!current) return;
+          if (request === soundRequest.current && !useInlineVideoSoundPreference.getState().muted) {
+            automaticAudio.current = false; setInlineVideoAutomaticAudio(player, false);
+            player.audioMixingMode = 'doNotMix'; player.muted = false; setMuted(false);
+          }
+        } else if (!musicState.current && !otherAudioPreventsInlineAutoplay()) {
+          automaticAudio.current = true; setInlineVideoAutomaticAudio(player, true);
+          player.audioMixingMode = 'mixWithOthers';
+          const audible = await playInlineVideoAutomatic(player);
+          if (!current) return;
+          if (request !== soundRequest.current || useInlineVideoSoundPreference.getState().muted) {
+            player.muted = true; setMuted(true);
+          } else { setMuted(!audible); }
+          return;
+        }
+      }
+      player.play();
     })().catch(() => { if (current) setStatus('error'); });
     const statusSub = player.addListener('statusChange', event => {
       if (!current) return;
@@ -97,28 +144,48 @@ function InlinePlayer({ uri, onFullscreen }: Pick<Props, 'uri' | 'onFullscreen'>
     });
     const playingSub = player.addListener('playingChange', event => { if (current) setPlaying(event.isPlaying); });
     const timeSub = player.addListener('timeUpdate', event => { if (current) setPosition(event.currentTime); });
-    return () => { current = false; controller.abort(); statusSub.remove(); playingSub.remove(); timeSub.remove(); };
-  }, [uri, retry, player]);
+    const mutedSub = player.addListener('mutedChange', event => { if (current) setMuted(event.muted); });
+    return () => { current = false; controller.abort(); statusSub.remove(); playingSub.remove(); timeSub.remove(); mutedSub.remove(); };
+  }, [uri, retry, player, pause, claimManualPlay]);
   useEffect(() => {
-    if (musicPlaying || status === 'error') {
-      soundRequest.current++;
-      player.muted = true;
-      player.audioMixingMode = 'mixWithOthers';
-      setMuted(true); setBusy(false);
-      if (status === 'error') player.pause();
-    }
-  }, [musicPlaying, status, player]);
-  const toggleSound = async () => {
-    if (!muted) {
-      soundRequest.current++;
-      player.muted = true; player.audioMixingMode = 'mixWithOthers'; setMuted(true);
-      return;
-    }
+    const started = musicActive && (!previousMusic.current.playing || previousMusic.current.trackKey !== musicTrackKey);
+    previousMusic.current = { playing: musicActive, trackKey: musicTrackKey };
+    if (!musicActive) return;
+    if (started) soundRequest.current++;
+    player.muted = true;
+    automaticAudio.current = true; setInlineVideoAutomaticAudio(player, true);
+    player.audioMixingMode = 'mixWithOthers';
+    setMuted(true); setBusy(false);
+  }, [musicActive, musicTrackKey, player]);
+  useEffect(() => {
+    if (status !== 'error') return;
+    soundRequest.current++;
+    player.muted = true;
+    automaticAudio.current = true; setInlineVideoAutomaticAudio(player, true);
+    player.audioMixingMode = 'mixWithOthers';
+    setMuted(true); setBusy(false); player.pause();
+  }, [status, player]);
+  useEffect(() => {
+    if (!controlsVisible || !playing || screenReader) return;
+    const timer = setTimeout(() => setControlsVisible(false), 3000);
+    return () => clearTimeout(timer);
+  }, [controlsVisible, controlInteraction, playing, screenReader]);
+  useEffect(() => {
+    if (!userMuted) return;
+    soundRequest.current++;
+    player.muted = true; setMuted(true);
+    automaticAudio.current = true; setInlineVideoAutomaticAudio(player, true);
+    player.audioMixingMode = 'mixWithOthers';
+  }, [userMuted, player]);
+  const revealControls = () => { setControlsVisible(true); setControlInteraction(value => value + 1); };
+  const enableSound = async () => {
+    void setInlineVideoUserMuted(false);
     const request = ++soundRequest.current;
     setBusy(true);
     try {
-      await pause();
-      if (!alive.current || request !== soundRequest.current) return;
+      if (musicState.current) await pause();
+      if (!alive.current || request !== soundRequest.current || useInlineVideoSoundPreference.getState().muted) return;
+      automaticAudio.current = false; setInlineVideoAutomaticAudio(player, false);
       player.audioMixingMode = 'doNotMix'; player.muted = false; setMuted(false);
     } catch {
       if (alive.current && request === soundRequest.current) setStatus('error');
@@ -126,25 +193,52 @@ function InlinePlayer({ uri, onFullscreen }: Pick<Props, 'uri' | 'onFullscreen'>
       if (alive.current && request === soundRequest.current) setBusy(false);
     }
   };
+  const toggleSound = () => {
+    if (!muted) {
+      void setInlineVideoUserMuted(true);
+      soundRequest.current++;
+      player.muted = true; setMuted(true);
+      automaticAudio.current = true; setInlineVideoAutomaticAudio(player, true);
+      player.audioMixingMode = 'mixWithOthers';
+    } else { void enableSound(); }
+  };
+  const requestVideoSound = () => {
+    if (!useInlineVideoSoundPreference.getState().muted && (muted || automaticAudio.current)) void enableSound();
+  };
   const seek = (seconds: number) => { player.currentTime = Math.max(0, Math.min(duration, seconds)); setPosition(player.currentTime); };
   const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+  const showControls = status === 'ready' && (screenReader || !playing || controlsVisible);
   return <View style={StyleSheet.absoluteFill}>
     <VideoView player={player} style={StyleSheet.absoluteFill} nativeControls={false} contentFit="contain" allowsPictureInPicture={false} />
+    {status === 'ready' ? <Pressable accessible={!screenReader} accessibilityRole="button" accessibilityLabel={!playing ? 'Play video' : showControls ? 'Hide video controls' : 'Show video controls'} style={StyleSheet.absoluteFill} onPress={event => {
+      event.stopPropagation();
+      if (!playing) {
+        revealControls(); player.play();
+        requestVideoSound();
+      } else if (controlsVisible) setControlsVisible(false);
+      else {
+        revealControls();
+        requestVideoSound();
+      }
+    }} /> : null}
+    {status === 'ready' && !showControls ? <Pressable accessibilityRole="button" accessibilityLabel={muted ? 'Turn video sound on' : 'Mute video'} accessibilityState={{ busy }} disabled={busy} style={styles.muteCorner} onPress={event => { event.stopPropagation(); toggleSound(); }}>
+      <MaterialIcons name={muted ? 'volume-off' : 'volume-up'} size={22} color="#FFFFFF" />
+    </Pressable> : null}
     {status === 'loading' ? <View pointerEvents="none" style={styles.center}><ActivityIndicator color="#FFFFFF" accessibilityLabel="Loading video" /></View> : null}
     {status === 'error' ? <View style={styles.error}>
       <Text accessibilityRole="alert" style={styles.errorText}>This video couldn’t be played.</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Retry video playback" style={styles.retry} onPress={event => { event.stopPropagation(); player.pause(); setRetry(value => value + 1); }}><Text style={styles.errorText}>Try again</Text></Pressable>
-    </View> : <View style={styles.controls}>
+    </View> : showControls ? <View style={styles.controls}>
       <View style={styles.controlRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Pause video' : 'Play video'} disabled={status !== 'ready'} style={styles.button} onPress={event => { event.stopPropagation(); playing ? player.pause() : player.play(); }}><MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={25} color="#FFFFFF" /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Pause video' : 'Play video'} disabled={status !== 'ready'} style={styles.button} onPress={event => { event.stopPropagation(); revealControls(); if (playing) { soundRequest.current++; player.pause(); } else { player.play(); requestVideoSound(); } }}><MaterialIcons name={playing ? 'pause' : 'play-arrow'} size={25} color="#FFFFFF" /></Pressable>
         <Text style={styles.time}>{clock(position)} / {clock(duration)}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={muted ? 'Turn video sound on' : 'Mute video'} accessibilityState={{ busy }} disabled={busy || status !== 'ready'} style={styles.button} onPress={event => { event.stopPropagation(); void toggleSound(); }}><MaterialIcons name={muted ? 'volume-off' : 'volume-up'} size={22} color="#FFFFFF" /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={muted ? 'Turn video sound on' : 'Mute video'} accessibilityState={{ busy }} disabled={busy || status !== 'ready'} style={styles.button} onPress={event => { event.stopPropagation(); revealControls(); void toggleSound(); }}><MaterialIcons name={muted ? 'volume-off' : 'volume-up'} size={22} color="#FFFFFF" /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Open video full screen" style={styles.button} onPress={event => { event.stopPropagation(); player.pause(); onFullscreen(); }}><MaterialIcons name="fullscreen" size={25} color="#FFFFFF" /></Pressable>
       </View>
-      <Pressable accessibilityRole="adjustable" accessibilityLabel="Video position" accessibilityValue={{ min: 0, max: Math.ceil(duration), now: Math.floor(position), text: `${clock(position)} of ${clock(duration)}` }} accessibilityActions={[{ name: 'increment', label: 'Forward ten seconds' }, { name: 'decrement', label: 'Back ten seconds' }]} onAccessibilityAction={event => seek(position + (event.nativeEvent.actionName === 'increment' ? 10 : -10))} style={styles.seekTouch} onLayout={event => { seekWidth.current = event.nativeEvent.layout.width; }} onPress={event => { event.stopPropagation(); if (duration > 0 && seekWidth.current > 24) seek(duration * Math.max(0, Math.min(1, (event.nativeEvent.locationX - 12) / (seekWidth.current - 24)))); }}>
+      <Pressable accessibilityRole="adjustable" accessibilityLabel="Video position" accessibilityValue={{ min: 0, max: Math.ceil(duration), now: Math.floor(position), text: `${clock(position)} of ${clock(duration)}` }} accessibilityActions={[{ name: 'increment', label: 'Forward ten seconds' }, { name: 'decrement', label: 'Back ten seconds' }]} onAccessibilityAction={event => { revealControls(); seek(position + (event.nativeEvent.actionName === 'increment' ? 10 : -10)); }} style={styles.seekTouch} onLayout={event => { seekWidth.current = event.nativeEvent.layout.width; }} onPress={event => { event.stopPropagation(); revealControls(); if (duration > 0 && seekWidth.current > 24) seek(duration * Math.max(0, Math.min(1, (event.nativeEvent.locationX - 12) / (seekWidth.current - 24)))); }}>
         <View style={styles.seekTrack}><View style={[styles.seekProgress, { width: `${duration > 0 ? Math.min(100, position / duration * 100) : 0}%` }]} /></View>
       </Pressable>
-    </View>}
+    </View> : null}
   </View>;
 }
 
@@ -155,6 +249,7 @@ const styles = StyleSheet.create({
   errorText: { color: '#FFFFFF', fontFamily: pluggdFonts.satoshiMedium, textAlign: 'center', fontSize: 13 },
   retry: { minHeight: 44, paddingHorizontal: 20, justifyContent: 'center', borderRadius: 22, backgroundColor: '#333333' },
   controls: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.72)' },
+  muteCorner: { position: 'absolute', right: 8, bottom: 8, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
   controlRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 },
   button: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   time: { flex: 1, color: '#FFFFFF', fontFamily: pluggdFonts.satoshiMedium, fontSize: 11, fontVariant: ['tabular-nums'] },
