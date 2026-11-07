@@ -110,6 +110,7 @@ interface PlaybackContextType {
 }
 
 const PlaybackContext = createContext<PlaybackContextType | undefined>(undefined);
+const PlaybackTrackPresenceContext = createContext<boolean | undefined>(undefined);
 
 export function resolvePlaybackDuration(reportedDuration: unknown, trackDuration: unknown): number {
   const reported = Number(reportedDuration);
@@ -580,7 +581,9 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
         toggleShuffle,
       }}
     >
-      {children}
+      <PlaybackTrackPresenceContext.Provider value={Boolean(currentTrack)}>
+        {children}
+      </PlaybackTrackPresenceContext.Provider>
     </PlaybackContext.Provider>
   );
 }
@@ -589,4 +592,11 @@ export function usePlayback() {
   const ctx = useContext(PlaybackContext);
   if (!ctx) throw new Error('usePlayback must be used within PlaybackProvider');
   return ctx;
+}
+
+// Layout only needs to know whether to reserve space for the player, not its clock.
+export function useHasPlaybackTrack() {
+  const present = useContext(PlaybackTrackPresenceContext);
+  if (present === undefined) throw new Error('useHasPlaybackTrack must be used within PlaybackProvider');
+  return present;
 }

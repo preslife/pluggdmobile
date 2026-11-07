@@ -1,6 +1,6 @@
 import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { usePlayback } from '../context/PlaybackProvider';
+import { useHasPlaybackTrack } from '../context/PlaybackProvider';
 import {
   bottomChromeInsetForLayout,
   isBottomChromeHidden,
@@ -24,7 +24,7 @@ import { useAdaptiveNavigationMode } from './adaptiveNavigation';
 export function useBottomChromeInset(): number {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { currentTrack } = usePlayback();
+  const hasCurrentTrack = useHasPlaybackTrack();
   const navigationMode = useAdaptiveNavigationMode();
   const bottomHidden = isBottomChromeHidden(pathname);
   const wideTopNavigation = shouldUseWideTopNavigation(pathname, navigationMode);
@@ -33,6 +33,6 @@ export function useBottomChromeInset(): number {
     safeBottom: insets.bottom,
     bottomHidden,
     wideTopNavigation,
-    hasCurrentTrack: Boolean(currentTrack),
+    hasCurrentTrack,
   });
 }

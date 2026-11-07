@@ -129,11 +129,12 @@ async function fixture({ strict = false, realProgress = false } = {}) {
     '../features/playback/playbackErrorRecovery': recovery,
   }, timers);
   function Probe() { f.value = provider.usePlayback(); return null; }
+  function LayoutProbe() { f.layoutRenders = (f.layoutRenders || 0) + 1; f.hasTrack = provider.useHasPlaybackTrack(); return null; }
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
   const render = () => {
-    const tree = React.createElement(provider.PlaybackProvider, null, React.createElement(Probe));
+    const tree = React.createElement(provider.PlaybackProvider, null, React.createElement(Probe), React.createElement(LayoutProbe));
     root.render(strict ? React.createElement(React.StrictMode, null, tree) : tree);
   };
   await act(async () => render());
@@ -724,6 +725,25 @@ test('a far stale pre-seek sample cannot overwrite the requested recovery positi
     await f.advance();
     assert.deepEqual(f.calls, ['load', 'seek']);
     assert.equal(f.progress.position, 30, 'the far stale sample never confirms the pending seek');
+  } finally { await f.close(); }
+});
+
+test('track-presence layout consumers ignore progress ticks but follow player appearance and removal', async () => {
+  const f = await fixture({ realProgress: true });
+  try {
+    assert.equal(f.hasTrack, true);
+    const renders = f.layoutRenders;
+    for (let i = 0; i < 8; i++) {
+      f.progress.position += 0.25;
+      await f.advance(250);
+    }
+    assert.ok(f.value.progress.position > 37, 'full playback subscribers still receive progress');
+    assert.equal(f.layoutRenders, renders, 'clock ticks do not rerender layout-only subscribers');
+    await act(async () => f.value.closePlayer());
+    assert.equal(f.hasTrack, false, 'removing the player releases its layout space');
+    assert.ok(f.layoutRenders > renders);
+    await act(async () => f.value.playQueue([trackB]));
+    assert.equal(f.hasTrack, true, 'a new player reserves its layout space');
   } finally { await f.close(); }
 });
 
