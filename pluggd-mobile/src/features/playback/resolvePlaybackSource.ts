@@ -5,7 +5,7 @@ import { mixAccessSession } from './mixAccessSession';
 import { nativeMixAccess, NATIVE_MIX_METADATA_MAX_AGE_MS } from './nativeMixAccess';
 import { hasCurrentMixAccess, isProtectedMix, nativeMixTrack } from './protectedMixPlayback';
 
-import { assertReleaseAccess, assertReleaseGrantCurrent, hasCurrentReleaseAccess, isReleaseTrack, releaseAgeAccess } from './releaseAgeAccess';
+import { assertReleaseAccess, assertReleaseGrantCurrent, hasCurrentReleaseAccess, isReleaseTrack, isReleaseAccessDenial, ReleaseAgeAccessError, releaseAgeAccess } from './releaseAgeAccess';
 import { releasePlayableUrl } from '../../lib/mobileContent';
 
 type ProtectedKind = 'beat' | 'mix' | 'release';
@@ -88,6 +88,10 @@ export function canRefreshPlaybackSource(track: PluggdTrack): boolean {
 
 export function playbackSourceNeedsRefresh(track: PluggdTrack, now = Date.now()): boolean {
   if (!canRefreshPlaybackSource(track)) return false;
+  if (isReleaseTrack(track)) {
+    const expiry = releaseAgeAccess.sourceExpiresAt(track);
+    return !releaseAgeAccess.playable(track, now) || (typeof expiry === 'number' && now >= expiry - REFRESH_MARGIN_MS);
+  }
   const expiry = track.playbackSource?.expiresAt;
   return typeof expiry !== 'number' || !Number.isFinite(expiry) || now >= expiry - REFRESH_MARGIN_MS;
 }
@@ -97,6 +101,7 @@ export function playbackSourceNeedsRefresh(track: PluggdTrack, now = Date.now())
  */
 export async function resolvePlaybackTrack(track: PluggdTrack, options: { useCurrentSource?: boolean } = {}): Promise<PluggdTrack | null> {
   let canonicalReleaseSourceId: string | undefined;
+  let previousRelease: PluggdTrack | undefined;
   if (isProtectedMix(track)) {
     if (!track.mixAccess) return null;
     if (!hasCurrentMixAccess(track)) {
@@ -128,24 +133,27 @@ export async function resolvePlaybackTrack(track: PluggdTrack, options: { useCur
     }
   }
   if (isReleaseTrack(track)) {
+    if (options.useCurrentSource && releaseAgeAccess.playable(track)) return track;
+    previousRelease = track;
     const grant = await assertReleaseAccess({ releaseId: track.releaseId || (track.trackId ? undefined : track.id), trackId: track.trackId }).catch(error => {
-      releaseAgeAccess.invalidate(track.releaseAccess);
+      if (isReleaseAccessDenial(error)) releaseAgeAccess.invalidate(track.releaseAccess);
       throw error;
     });
     const source = releasePlayableUrl(grant.source);
     canonicalReleaseSourceId = grant.sourceCatalogId;
     if (!source || grant.source.playable_on_pluggd === false || ['unlicensed', 'takedown'].includes(grant.source.audio_rights_status)) {
       releaseAgeAccess.invalidate(track.releaseAccess);
-      return null;
-    }
-    if (options.useCurrentSource && source === originalUrl(track) && typeof track.playbackSource?.expiresAt === 'number'
-      && track.playbackSource.expiresAt > Date.now() && hasCurrentReleaseAccess(track)) {
-      return { ...track, releaseAccess: { authorizationId: grant.authorizationId } };
+      throw new ReleaseAgeAccessError('restricted');
     }
     track = { ...track, sourceType: 'release', releaseId: grant.releaseId, trackId: grant.trackId, url: source,
-      releaseAccess: { authorizationId: grant.authorizationId },
-      playbackSource: { originalUrl: source, expiresAt: Date.now() + 300_000 } };
-    if (!hasCurrentReleaseAccess(track)) return null;
+      releaseAccess: { authorizationId: grant.authorizationId }, playbackSource: { originalUrl: source, expiresAt: null } };
+    // A public CDN source has no fabricated signing deadline. Its independent
+    // bounded canonical decision is maintained by the access monitor.
+    if (!protectedIdentity(track) && !battlePath(track)) {
+      releaseAgeAccess.bindSource(track.releaseAccess!, source, source, null);
+      if (previousRelease.url === track.url) releaseAgeAccess.adopt(previousRelease, track);
+      return track;
+    }
   }
   const path = battlePath(track);
   const storedIdentity = protectedIdentity(track);
@@ -171,15 +179,21 @@ export async function resolvePlaybackTrack(track: PluggdTrack, options: { useCur
     } else {
       if (!identity) return null;
       const { data, error } = await boundedSourceRead(supabase.functions.invoke('resolve-playback-url', { body: identity }));
-      if (error || typeof data?.signedUrl !== 'string') return null;
+      if (error || typeof data?.signedUrl !== 'string') {
+        if (isReleaseTrack(track)) {
+          const status = Number((error as any)?.context?.status);
+          throw new ReleaseAgeAccessError([401, 403, 404].includes(status) ? 'restricted' : 'unavailable');
+        }
+        return null;
+      }
       url = data.signedUrl;
       expiresIn = Number(data.expiresIn);
     }
     if (track.releaseAccess) await assertReleaseGrantCurrent(track.releaseAccess);
-    if (!url.trim() || !hasCurrentReleaseAccess(track)) return null;
+    if (!url.trim()) { if (isReleaseTrack(track)) throw new ReleaseAgeAccessError('unavailable'); return null; }
     const resolved = new URL(url);
     if (resolved.protocol !== 'https:' || (sample && (resolved.username || resolved.password))) return null;
-    return {
+    const next = {
       ...track,
       url: url.trim(),
       playbackSource: {
@@ -188,7 +202,17 @@ export async function resolvePlaybackTrack(track: PluggdTrack, options: { useCur
         expiresAt: Number.isFinite(expiresIn) && expiresIn > 0 ? requestedAt + expiresIn * 1000 : null,
       },
     };
-  } catch {
+    if (isReleaseTrack(next)) {
+      if (typeof next.playbackSource.expiresAt !== 'number') throw new ReleaseAgeAccessError('unavailable');
+      releaseAgeAccess.bindSource(next.releaseAccess!, originalUrl(next), next.url, next.playbackSource.expiresAt);
+      if (previousRelease?.url === next.url) releaseAgeAccess.adopt(previousRelease, next);
+    }
+    return next;
+  } catch (error) {
+    if (isReleaseTrack(track)) {
+      if (isReleaseAccessDenial(error)) releaseAgeAccess.invalidate(previousRelease?.releaseAccess);
+      throw error instanceof ReleaseAgeAccessError ? error : new ReleaseAgeAccessError('unavailable');
+    }
     return null;
   }
 }

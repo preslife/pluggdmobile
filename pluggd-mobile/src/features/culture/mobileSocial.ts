@@ -304,13 +304,20 @@ async function enrichPosts(rows: SocialPostRow[], userId: string | null): Promis
     ? await safeList<SocialPostRow>((supabase as any).from('social_posts').select('*').in('id', originalIds))
     : [];
 
-  const allRows = [...rows, ...originals];
+  // A quoted original is content in its own right: apply the same moderation
+  // and account-block rules before hydrating any of its attachments or identity.
+  const blockedOriginalAuthors = originals.length ? await loadBlockedUserIds() : new Set<string>();
+  if (originals.length && await currentUserId() !== userId) throw new Error('This feed session changed.');
+  const visibleOriginals = originals.filter(row => isPostVisibleToViewer(row, userId)
+    && (!blockedOriginalAuthors.has(row.user_id) || row.user_id === userId));
+  const allRows = [...rows, ...visibleOriginals];
   const profileMap = await loadProfiles(allRows.map((row) => row.user_id));
   const destinationMap = await buildDestinationMap(allRows.map((row) => row.id));
   const interactions = await loadInteractionSets(userId, allRows.map((row) => row.id));
   const music = await postMusicSummaries(allRows.filter(row => typeof row.video === 'string' && musicPostId(row.video)).map(row => row.id));
 
-  const publicOriginals = originals.filter(
+  if (originals.length && await currentUserId() !== userId) throw new Error('This feed session changed.');
+  const publicOriginals = visibleOriginals.filter(
     (row) => row.user_id === userId || !isNonPublicTestIdentity(profileMap.get(row.user_id)),
   );
   const originalMap = new Map<string, MobileSocialPostPreview>();

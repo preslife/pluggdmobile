@@ -379,20 +379,47 @@ test('actual scoped moderation preserves captured bearer while invocation prepar
 test('actual legacy moderation keeps existing dispatch for unrelated callers', async () => {
  const f=postPersistenceFixture({actualSafety:true});const result=await f.safety.moderateUserContent({contentKind:'comment',text:'Legacy caller'});assert.equal(result.decision,'allow');assert.equal(f.moderationCalls[0].headers,undefined);assert.equal(f.moderationCalls[0].actor,uuid(1));
 });
-test('actual missing-DOB recovery opens only canonical account settings and provides truthful failed-open steps', async () => {
+test('actual missing-DOB recovery stays in the app and offers an accessible private birthday prompt', async () => {
  const f=await playerFixture();try {
   f.loadError=new f.age.ReleaseAgeAccessError('missing-dob');await f.ui.click('Play Album title');assert.equal(f.starts.length,0);
-  const link=f.ui.find('Open PLUGGD account settings on the web');assert.ok(link);assert.ok(parseFloat(window.getComputedStyle(link).minHeight)>=44);
-  await f.ui.click('Open PLUGGD account settings on the web');assert.equal(f.opened[0],f.age.RELEASE_DOB_SETTINGS_URL);assert.equal(f.opened[0],'https://pluggd.fm/dashboard/settings/account');
-  f.openError=true;await f.ui.click('Open PLUGGD account settings on the web');assert.match(f.ui.container.textContent,/Optional personal details/);assert.equal(f.starts.length,0);
+  const button=f.ui.find('Add date of birth');assert.ok(button);assert.ok(parseFloat(window.getComputedStyle(button).minHeight)>=44);
+  await f.ui.click('Add date of birth');assert.equal(f.routes.at(-1),'/auth/date-of-birth');assert.equal(f.opened.length,0);assert.equal(f.starts.length,0);
  }finally{await f.ui.close();}
 });
 test('actual under-18 denial never offers DOB recovery or starts a queue', async () => {
  const f=await playerFixture();try {
-  f.loadError=new f.age.ReleaseAgeAccessError('under-18');await f.ui.click('Play Album title');assert.equal(f.starts.length,0);assert.ok(!f.ui.find('Open PLUGGD account settings on the web'));assert.match(f.ui.container.textContent,/18 and over/);
+  f.loadError=new f.age.ReleaseAgeAccessError('under-18');await f.ui.click('Play Album title');assert.equal(f.starts.length,0);assert.ok(!f.ui.find('Add date of birth'));assert.match(f.ui.container.textContent,/18 and over/);
   await f.ui.click('Retry playing Album title');assert.equal(f.starts.length,0);assert.equal(f.opened.length,0);
   assert.equal(f.age.releaseAccessRecoveryUrl(Object.assign(Error('Forged'),{status:'missing-dob'})),null);
  }finally{await f.ui.close();}
+});
+function quoteVisibilityFixture() {
+ const f={actor:uuid(1), blocked:new Set(), original:{...post,id:uuid(30),user_id:uuid(22),content:'Original private text',images:['https://image/private.jpg'],video:'music:original'}, profileLoads:[],musicLoads:[]};
+ const db={auth:{getUser:async()=>({data:{user:f.actor?{id:f.actor}:null}})},from(table){const q={select(){return q;},in(){return q;},eq(){return q;},then(yes,no){return Promise.resolve({data:table==='social_posts'?[f.original]:[],error:null}).then(yes,no);}};return q;}};
+ f.api=load('src/features/culture/mobileSocial.ts',{
+  '../../lib/supabase':{supabase:db},'../social-music/service':{postMusicSummaries:async ids=>{f.musicLoads.push(...ids);return new Map();}},'../social-music/model':{musicPostId:()=>true},
+  '../../lib/publicAudienceFilters':{isNonPublicTestProfileName:name=>name==='Hidden test'},
+  '../safety/accountSafety':{loadBlockedUserIds:async()=>{if(f.blockError)throw Error('Blocks unavailable');if(f.blockWait)await f.blockWait.promise;return f.blocked;}},
+  './publicCreatorIdentity':{loadPublicCreatorIdentityMap:async ids=>{f.profileLoads.push(...ids);if(f.profileWait)await f.profileWait.promise;return new Map(ids.map(id=>[id,{full_name:f.hidden?'Hidden test':'Artist',username:'artist'}]));},publicCreatorDisplayName:p=>p?.full_name||'Artist'},
+ },read('src/features/culture/mobileSocial.ts')+'\nexport { enrichPosts };');
+ f.read=()=>f.api.enrichPosts([{...post,original_post_id:uuid(30),is_quote:true}],uuid(1));return f;
+}
+test('actual quote hydration removes blocked, deleted and moderated originals before attachment hydration',async()=>{
+ for(const restriction of ['blocked','deleted','hidden','removed','rejected','cancelled']){
+  const f=quoteVisibilityFixture();if(restriction==='blocked')f.blocked.add(f.original.user_id);else if(restriction==='deleted')f.original.is_deleted=true;else f.original.moderation_status=restriction;
+  const rows=await f.read();assert.equal(rows.length,1);assert.equal(rows[0].original_post,null);assert.ok(!f.profileLoads.includes(f.original.user_id));assert.ok(!f.musicLoads.includes(f.original.id));assert.ok(!JSON.stringify(rows).includes('Original private text'));assert.ok(!JSON.stringify(rows).includes('private.jpg'));
+ }
+});
+test('actual quote hydration retains allowed originals and filters test identities',async()=>{
+ const f=quoteVisibilityFixture();assert.equal((await f.read())[0].original_post.content,'Original private text');
+ const hidden=quoteVisibilityFixture();hidden.hidden=true;assert.equal((await hidden.read()).length,0);
+ const own=quoteVisibilityFixture();own.original.user_id=uuid(1);own.original.moderation_status='hidden';assert.ok((await own.read())[0].original_post,'own hidden original follows existing top-level owner visibility');
+});
+test('actual quote hydration fails safely on block-read failure or account change during hydration',async()=>{
+ const failure=quoteVisibilityFixture();failure.blockError=true;await assert.rejects(failure.read(),/Blocks unavailable/);
+ for(const step of ['block','profile']){
+  const f=quoteVisibilityFixture(),wait=deferred();if(step==='block')f.blockWait=wait;else f.profileWait=wait;const pending=f.read();await settle();f.actor=uuid(2);wait.resolve();await assert.rejects(pending,/session changed/);
+ }
 });
 let failed = 0;
 for (const { name, run } of tests) { try { await run(); console.log('PASS ' + name); } catch (error) { failed++; console.error('FAIL ' + name + ': ' + error.message); } }

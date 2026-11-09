@@ -10,6 +10,7 @@ import {
 
 export type GoogleSignInResult = {
   isNewUser: boolean;
+  userId: string;
 };
 
 type GoogleSignInError = Error & {
@@ -102,5 +103,5 @@ export async function signInWithGoogle(consent: SocialAuthConsent): Promise<Goog
   });
   if (metadataError) throw metadataError;
 
-  return { isNewUser };
+  return { isNewUser, userId: user.id };
 }

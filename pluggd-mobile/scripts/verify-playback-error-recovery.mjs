@@ -155,12 +155,13 @@ async function fixture({ strict = false, realProgress = false, constrained = fal
   f.ageRelease = { id: 'published-release-fixture', user_id: 'canonical-owner', explicit: false };
   f.ageTrack = { id: 'published-track-fixture', release_id: f.ageRelease.id, explicit: false,
     audio_url: 'https://project.supabase.co/storage/v1/object/sign/audio-files/original.mp3?token=old' };
-  const ageDb = releaseAgeCatalog({ dob: () => f.ageDOB, releaseRows: [f.ageRelease], trackRows: [f.ageTrack], session: () => f.actor ? { user: { id: f.actor } } : null });
+  f.ageTracks = [f.ageTrack];
+  const ageDb = releaseAgeCatalog({ dob: () => f.ageDOB, releaseRows: [f.ageRelease], trackRows: f.ageTracks, session: () => f.actor ? { user: { id: f.actor } } : null });
   ageDb.auth = actorAuth;
   const age = load('../src/features/playback/releaseAgeAccess.ts', {
     '../../lib/supabase': { supabase: ageDb }, 'expo-crypto': { randomUUID: require('node:crypto').randomUUID },
   }, timers);
-  const feedback = load('../src/features/playback/releaseAccessFeedback.ts', { './releaseAgeAccess': age, 'react-native': { Alert: { alert: (...args) => f.alerts.push(args) } }, 'expo-web-browser': { openBrowserAsync: async url => { f.recoveryUrl = url; } } }, timers);
+  const feedback = load('../src/features/playback/releaseAccessFeedback.ts', { './releaseAgeAccess': age, 'react-native': { Alert: { alert: (...args) => f.alerts.push(args) } }, 'expo-router': { router: { push: route => { f.recoveryRoute = route; } } } }, timers);
   const playbackAccess = load('../src/features/playback/playbackAccess.ts', { './protectedMixPlayback': protection, './releaseAgeAccess': age }, timers);
   timers.releaseAgeModule = age; timers.releaseAgeDb = ageDb;
   f.age = age;
@@ -316,6 +317,20 @@ async function protectedQueue(f) {
   f.progress.position = 37;
   await f.render();
   f.calls.length = 0;
+  return source;
+}
+
+async function publicReleaseQueue(f, { explicit = false, service = true } = {}) {
+  if (explicit) await f.auth('adult');
+  f.ageTrack.audio_url = 'https://cdn.example.test/release-one.mp3';
+  f.ageTrack.explicit = explicit;
+  for (let index = 2; index <= 3; index++) f.ageTracks.push({ ...f.ageTrack, id: `published-track-${index}`, audio_url: `https://cdn.example.test/release-${index}.mp3` });
+  const source = sourceFixture(f.timers); f.resolve = (track, options) => source.api.resolvePlaybackTrack(track, options);
+  const tracks = f.ageTracks.map((row, index) => ({ ...protectedTrack, id: `cdn-${index}`, trackId: row.id, url: 'https://caller.invalid/ignored.mp3' }));
+  await act(async () => f.value.playQueue(tracks)); await f.render();
+  if (service) await f.startService();
+  f.progress.position = 37;
+  f.calls.length = 0; source.calls.length = 0; f.timers.releaseAgeDb.calls.length = 0;
   return source;
 }
 
@@ -577,7 +592,7 @@ test('expired protected error renews under the existing 1.2s retry backoff', wit
   assert.equal(f.nativeQueue[1].id, trackB.id);
 }));
 
-test('denied protected refresh retains source/queue/position and has no retry loop', withPlayer(async (f) => {
+test('temporary protected-source renewal preserves audio and retries only until the actual source expires', withPlayer(async (f) => {
   const source = await protectedQueue(f);
   const original = f.nativeQueue[0].url;
   source.result = { data: null, error: new Error('Access denied') };
@@ -585,9 +600,12 @@ test('denied protected refresh retains source/queue/position and has no retry lo
   assert.deepEqual(f.calls, []);
   assert.equal(f.nativeQueue[0].url, original);
   retained(f);
-  assert.equal(f.alerts.length, 1);
+  assert.equal(f.alerts.length, 0);
   await f.advance(600000);
-  assert.equal(source.calls.length, 2);
+  assert.equal(source.calls.length, 3);
+  assert.equal(f.wantsPlayback, false);
+  assert.equal(f.nativeQueue[0].url, original);
+  assert.equal(f.alerts.length, 1);
 }));
 
 test('source read timeout preserves the old item and drops a late authorized response', withPlayer(async (f) => {
@@ -598,7 +616,7 @@ test('source read timeout preserves the old item and drops a late authorized res
   await f.advance(270000);
   assert.equal(source.calls.length, 2);
   await f.advance(10000);
-  assert.equal(f.alerts.length, 1);
+  assert.equal(f.alerts.length, 0);
   await act(async () => { read.resolve({ data: { signedUrl: original + '-late', expiresIn: 300 }, error: null }); });
   assert.deepEqual(f.calls, []);
   assert.equal(f.nativeQueue[0].url, original);
@@ -662,7 +680,7 @@ test('background renewal denial never presents an offscreen Alert', withPlayer(a
   const source = await protectedQueue(f);
   await f.app('background');
   source.result = { data: null, error: new Error('Access denied') };
-  await f.advance(270000);
+  await f.advance(300000);
   assert.equal(f.alerts.length, 0);
   retained(f);
   await f.app('active');
@@ -1557,8 +1575,8 @@ test('expired queued release rechecks current explicit policy before skip and ne
 
 test('release background renewal and actor invalidation survive UI unmount without an extra timer', withPlayer(async f => {
   await f.auth('adult'); const source = await protectedQueue(f); await f.startService(); await f.unmountUI();
-  assert.equal(f.scheduled.size, 1); f.calls.length = 0;
-  await f.advance(270000); assert.equal(source.calls.length, 2); assert.deepEqual(f.calls, ['load', 'seek']);
+  assert.equal(f.scheduled.size, 2, 'one renewal plus an independent hard deadline'); f.calls.length = 0;
+  await f.advance(270000); assert.equal(source.calls.length, 2); assert.deepEqual(f.calls, [], 'identical URL acknowledgement must not reload audible release audio');
   assert.equal(f.progress.position, 37); assert.equal(f.wantsPlayback, true);
   await f.auth(null); assert.deepEqual(f.nativeQueue.map(track => track.id), [trackB.id]); assert.equal(f.wantsPlayback, false);
 }));
@@ -1572,7 +1590,7 @@ test('active release fails closed when refreshed private demographics no longer 
 
 test('native release seek rechecks age policy and cannot resume newly denied music', withPlayer(async f => {
   await f.auth('adult'); await protectedQueue(f); await f.startService();
-  f.ageTrack.explicit = true; f.ageDOB = '2015-11-09'; f.calls.length = 0;
+  f.ageTrack.explicit = true; f.ageDOB = '2015-11-09'; f.now += 301000; f.calls.length = 0;
   await f.emit({ type: Event.RemoteSeek, position: 88 });
   assert.deepEqual(f.nativeQueue.map(track => track.id), [trackB.id]); assert.equal(f.wantsPlayback, false);
   assert.ok(!f.calls.includes('seek')); assert.ok(!f.calls.includes('play'));
@@ -1581,7 +1599,7 @@ test('native release seek rechecks age policy and cannot resume newly denied mus
 test('natural advancement pauses a stale queued release before its age-policy read', withPlayer(async f => {
   await f.auth('adult'); const source = sourceFixture(f.timers); f.resolve = (track, options) => source.api.resolvePlaybackTrack(track, options);
   await act(async () => f.value.playQueue([trackA, protectedTrack])); await f.render(); await f.startService();
-  f.now += 6000; f.ageTrack.explicit = true; f.ageDOB = '2015-11-09'; f.index = 1; f.calls.length = 0;
+  f.now += 301000; f.ageTrack.explicit = true; f.ageDOB = '2015-11-09'; f.index = 1; f.calls.length = 0;
   const originalFrom = f.timers.releaseAgeDb.from;
   f.timers.releaseAgeDb.from = table => { if (table === 'tracks') assert.equal(f.wantsPlayback, false, 'stale native release must pause before policy data is read'); return originalFrom(table); };
   await f.emit({ type: Event.PlaybackActiveTrackChanged, track: f.nativeQueue[1] });
@@ -1589,16 +1607,120 @@ test('natural advancement pauses a stale queued release before its age-policy re
   assert.deepEqual(f.nativeQueue.map(track => track.id), [trackA.id]); assert.equal(f.wantsPlayback, false);
 }));
 
-test('missing DOB offers the existing private account website flow and retries after completion', withPlayer(async f => {
+test('missing DOB offers native completion without private route values and retries after completion', withPlayer(async f => {
   await f.auth('adult'); f.ageTrack.explicit = true; f.ageDOB = null;
   const source = sourceFixture(f.timers); f.resolve = (track, options) => source.api.resolvePlaybackTrack(track, options);
   await act(async () => { assert.equal(await f.value.playTrack(protectedTrack), null); });
   const feedback = f.alerts.at(-1);
-  assert.match(feedback[1], /Optional personal details/);
-  const open = feedback[2].find(button => button.text === 'Open account on web'); assert.ok(open);
+  assert.match(feedback[1], /Add your date of birth/);
+  const open = feedback[2].find(button => button.text === 'Add date of birth'); assert.ok(open);
   await act(async () => open.onPress());
-  assert.equal(f.recoveryUrl, 'https://pluggd.fm/dashboard/settings/account');
+  assert.equal(f.recoveryRoute, '/auth/date-of-birth');
   f.ageDOB = '1990-01-01'; await act(async () => { assert.ok(await f.value.playTrack(protectedTrack)); });
+}));
+
+test('three-song clean public release advances twice naturally on the native service with zero network or audio interruption', withPlayer(async f => {
+  const source = await publicReleaseQueue(f); await f.unmountUI();
+  assert.ok(f.nativeQueue.every(track => track.playbackSource.expiresAt === null));
+  for (const index of [1, 2]) {
+    f.now += 180000; f.index = index; f.progress.position = 0;
+    await f.emit({ type: Event.PlaybackActiveTrackChanged, index, lastIndex: index - 1, track: f.nativeQueue[index] });
+    assert.equal(f.wantsPlayback, true); assert.deepEqual(f.calls, []);
+  }
+  assert.equal(f.timers.releaseAgeDb.calls.length, 0); assert.equal(source.calls.length, 0);
+}));
+
+test('three-song clean public release advances twice through remote next without rechecking or reloading cached sources', withPlayer(async f => {
+  const source = await publicReleaseQueue(f); await f.unmountUI();
+  for (const index of [1, 2]) {
+    await f.emit({ type: Event.RemoteNext });
+    assert.equal(f.index, index); assert.equal(f.wantsPlayback, true);
+  }
+  assert.deepEqual(f.calls, []); assert.equal(f.timers.releaseAgeDb.calls.length, 0); assert.equal(source.calls.length, 0);
+}));
+
+test('public CDN song over4:30 has no synthetic signing deadline or mid-song audio load', withPlayer(async f => {
+  await publicReleaseQueue(f); await f.unmountUI();
+  for (const elapsed of [270000, 30000, 300000]) await f.advance(elapsed);
+  assert.equal(f.wantsPlayback, true); assert.equal(f.progress.position, 37);
+  assert.deepEqual(f.calls, []); assert.equal(f.timers.releaseAgeDb.calls.length, 0);
+  assert.equal(f.scheduled.size, 1, 'one future metadata check, not an immediate loop');
+}));
+
+for (const service of [true, false]) test(`clean CDN transient metadata failure at and beyond30min preserves audio and retries (${service ? 'native service' : 'mounted provider'})`, withPlayer(async f => {
+  await publicReleaseQueue(f, { service }); if (service) await f.unmountUI();
+  f.timers.releaseAgeDb.failures.add('tracks');
+  await f.advance(29 * 60000); assert.equal(f.timers.releaseAgeDb.calls.length, 1);
+  await f.advance(60000); await f.advance(60000);
+  assert.equal(f.wantsPlayback, true); assert.equal(f.progress.position, 37); assert.equal(f.nativeQueue.length, 3);
+  assert.deepEqual(f.calls, []); assert.equal(f.scheduled.size, 1); assert.ok(f.timers.releaseAgeDb.calls.length <= 3);
+  f.timers.releaseAgeDb.failures.clear(); await f.advance(15000);
+  assert.equal(f.wantsPlayback, true); assert.deepEqual(f.calls, []); assert.equal(f.nativeQueue.length, 3);
+  const refreshAt = f.age.releaseAgeAccess.refreshAt(f.nativeQueue[0]); assert.ok(refreshAt > f.now + 28 * 60000);
+}));
+
+test('successful CDN policy renewal with the identical URL never loads, seeks, pauses or replays', withPlayer(async f => {
+  await publicReleaseQueue(f); await f.unmountUI();
+  await f.advance(29 * 60000);
+  assert.equal(f.timers.releaseAgeDb.calls.length, 2); assert.deepEqual(f.calls, []);
+  assert.equal(f.wantsPlayback, true); assert.equal(f.progress.position, 37); assert.equal(f.scheduled.size, 1);
+}));
+
+test('transient signed-release renewal keeps the queue and plays until its real expiry, then pauses without eviction and recovers on retry', withPlayer(async f => {
+  const source = await protectedQueue(f); await f.startService();
+  const ids = f.nativeQueue.map(track => track.id), url = f.nativeQueue[0].url;
+  source.result = { data: null, error: new Error('Temporary connection failure') }; f.calls.length = 0;
+  await f.advance(270000); await f.advance(15000);
+  assert.equal(f.wantsPlayback, true); assert.deepEqual(f.calls, []); assert.equal(f.nativeQueue[0].url, url);
+  await f.advance(15000);
+  assert.equal(f.wantsPlayback, false); assert.deepEqual(f.nativeQueue.map(track => track.id), ids);
+  assert.ok(f.calls.includes('pause')); assert.ok(!f.calls.includes('remove'));
+  assert.match(f.alerts.at(-1)[1], /queue has been kept/);
+  source.result = { data: { signedUrl: url + '-recovered', expiresIn: 300 }, error: null };
+  await act(async () => f.value.play());
+  assert.equal(f.wantsPlayback, true); assert.deepEqual(f.nativeQueue.map(track => track.id), ids);
+  assert.equal(f.nativeQueue[0].url, source.result.data.signedUrl);
+}));
+
+test('expired explicit CDN lease pauses on transient failure but keeps its queue for a fresh age decision', withPlayer(async f => {
+  await publicReleaseQueue(f, { explicit: true });
+  f.timers.releaseAgeDb.failures.add('tracks');
+  await f.advance(29 * 60000); assert.equal(f.wantsPlayback, true);
+  await f.advance(60000);
+  assert.equal(f.wantsPlayback, false); assert.equal(f.nativeQueue.length, 3); assert.ok(!f.calls.includes('remove'));
+  f.timers.releaseAgeDb.failures.clear(); await act(async () => f.value.play());
+  assert.equal(f.wantsPlayback, true); assert.equal(f.nativeQueue.length, 3); assert.ok(!f.calls.includes('load'));
+}));
+
+test('successful authoritative explicit refusal after a cached clean decision stops and purges the refused entry', withPlayer(async f => {
+  await f.auth('adult'); await publicReleaseQueue(f); f.ageTrack.explicit = true; f.ageDOB = '2015-11-09';
+  await f.advance(29 * 60000);
+  assert.equal(f.wantsPlayback, false); assert.equal(f.nativeQueue.length, 2);
+  assert.ok(f.calls.includes('pause')); assert.ok(f.calls.includes('remove')); assert.ok(!f.calls.includes('play'));
+}));
+
+test('account change still purges cached clean CDN queue without waiting for its refresh target', withPlayer(async f => {
+  await f.auth('adult'); await publicReleaseQueue(f); await f.unmountUI();
+  await f.auth(null); assert.equal(f.wantsPlayback, false); assert.equal(f.nativeQueue.length, 0);
+  assert.ok(f.calls.includes('pause')); assert.ok(f.calls.includes('remove'));
+}));
+
+for (const service of [true, false]) test(`pending signing request cannot outrun the independent real-source deadline (${service ? 'native service' : 'mounted provider'})`, withPlayer(async f => {
+  const source = await protectedQueue(f); if (service) await f.startService();
+  const ids = f.nativeQueue.map(track => track.id), expiredUrl = f.nativeQueue[0].url;
+  const firstPending = deferred(); source.invoke = () => firstPending.promise;
+  await f.advance(270000);
+  await f.advance(10000); // first request times out at280 seconds
+  const pending = deferred(); source.invoke = () => pending.promise;
+  await f.advance(15000); // retry is now pending at295 seconds
+  assert.equal(f.wantsPlayback, true);
+  assert.equal(source.calls.length, 3);
+  await f.advance(5000); // hard expiry at300 precedes retry timeout at305
+
+  assert.equal(f.wantsPlayback, false); assert.deepEqual(f.nativeQueue.map(track => track.id), ids);
+  assert.ok(f.calls.includes('pause')); assert.ok(!f.calls.includes('remove'));
+  await act(async () => pending.resolve({ data: { signedUrl: expiredUrl + '-late', expiresIn: 300 }, error: null }));
+  assert.equal(f.wantsPlayback, false, 'a late reply must not replay a paused source');
 }));
 
 let failures = 0;

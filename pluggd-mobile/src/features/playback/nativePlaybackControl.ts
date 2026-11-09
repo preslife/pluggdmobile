@@ -2,7 +2,7 @@ import type { PluggdTrack } from '../../context/PlaybackProvider';
 import { mixAccessSession } from './mixAccessSession';
 import { hasCurrentPlaybackAccess, requiresPlaybackAccess } from './playbackAccess';
 import { resolvePlaybackTrack } from './resolvePlaybackSource';
-import { isReleaseTrack, releaseAgeAccess } from './releaseAgeAccess';
+import { isReleaseTrack, isReleaseAccessDenial, releaseAgeAccess } from './releaseAgeAccess';
 import { runNativeQueueMutation } from './nativeQueueMutation';
 
 export interface NativeControlPlayer {
@@ -57,15 +57,30 @@ export async function refreshActivePrivateMix(
 ): Promise<boolean> {
   if (!currentNativePlaybackIntent(ticket)) return false;
   if (!hasCurrentPlaybackAccess(expected)) return denied(player, expected);
-  const next = await resolvePlaybackTrack(expected, { useCurrentSource: policyOnly }).catch(() => null);
+  let next: PluggdTrack | null;
+  try { next = await resolvePlaybackTrack(expected, { useCurrentSource: policyOnly }); }
+  catch (error) {
+    if (!currentNativePlaybackIntent(ticket)) return false;
+    if (!isReleaseTrack(expected) || isReleaseAccessDenial(error) || !hasCurrentPlaybackAccess(expected)) return denied(player, expected);
+    // A temporary policy/signer failure is not a refusal. Keep its source and
+    // queue; only pause if a real signing/explicit lease deadline has passed.
+    if (!releaseAgeAccess.playable(expected)) { await player.pause(); releaseAgeAccess.reportUnavailable(); }
+    return false;
+  }
   if (!currentNativePlaybackIntent(ticket)) return false;
-  if (!next || !hasCurrentPlaybackAccess(next)) return denied(player, expected);
+  if (!next || !hasCurrentPlaybackAccess(next)) {
+    if (isReleaseTrack(expected) && hasCurrentPlaybackAccess(expected)) {
+      if (!releaseAgeAccess.playable(expected)) { await player.pause(); releaseAgeAccess.reportUnavailable(); }
+      return false;
+    }
+    return denied(player, expected);
+  }
   try {
     return await runNativeQueueMutation(async () => {
       if (!currentNativePlaybackIntent(ticket) || !hasCurrentPlaybackAccess(next)) return false;
       const active = (await player.getActiveTrack()) as PluggdTrack | undefined;
       if (!sameAuthority(active, expected)) return false;
-      if (policyOnly && isReleaseTrack(expected) && next.url === expected.url) {
+      if (isReleaseTrack(expected) && next.url === expected.url) {
         if (position !== undefined) await player.seekTo(position);
         return currentNativePlaybackIntent(ticket) && hasCurrentPlaybackAccess(next);
       }
@@ -77,7 +92,10 @@ export async function refreshActivePrivateMix(
       await Promise.all([player.load(next), player.seekTo(target)]);
       return currentNativePlaybackIntent(ticket) && hasCurrentPlaybackAccess(next);
     });
-  } catch { return denied(player, expected); }
+  } catch {
+    if (isReleaseTrack(expected)) { await player.pause().catch(() => undefined); return false; }
+    return denied(player, expected);
+  }
 }
 
 export async function selectNativeQueueEntry(
@@ -92,9 +110,14 @@ export async function selectNativeQueueEntry(
   const target = snapshot[requestedIndex];
   if (!target || !currentNativePlaybackIntent(ticket)) return false;
   const protectedTarget = requiresPlaybackAccess(target);
-  const next = protectedTarget ? await resolvePlaybackTrack(target, { useCurrentSource: true }).catch(() => null) : target;
+  let next: PluggdTrack | null;
+  try { next = protectedTarget ? await resolvePlaybackTrack(target, { useCurrentSource: true }) : target; }
+  catch (error) {
+    if (!currentNativePlaybackIntent(ticket)) return false;
+    return isReleaseTrack(target) && !isReleaseAccessDenial(error) && hasCurrentPlaybackAccess(target) ? false : denied(player, target);
+  }
   if (!currentNativePlaybackIntent(ticket)) return false;
-  if (!next || !hasCurrentPlaybackAccess(next)) return denied(player, target);
+  if (!next || !hasCurrentPlaybackAccess(next)) return isReleaseTrack(target) && hasCurrentPlaybackAccess(target) ? false : denied(player, target);
   try {
     return await runNativeQueueMutation(async () => {
       if (!currentNativePlaybackIntent(ticket) || !hasCurrentPlaybackAccess(next)) return false;
@@ -104,7 +127,7 @@ export async function selectNativeQueueEntry(
       if (actualIndex < 0 || !currentNativePlaybackIntent(ticket)) return false;
       await player.skip(actualIndex);
       if (!currentNativePlaybackIntent(ticket) || !hasCurrentPlaybackAccess(next)) return false;
-      if (protectedTarget) await Promise.all([player.load(next), player.seekTo(0)]);
+      if (protectedTarget && (!isReleaseTrack(target) || next.url !== target.url)) await Promise.all([player.load(next), player.seekTo(0)]);
       if (!currentNativePlaybackIntent(ticket) || !hasCurrentPlaybackAccess(next)) return false;
       if (resume) await player.play();
       return true;

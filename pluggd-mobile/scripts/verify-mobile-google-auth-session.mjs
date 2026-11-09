@@ -51,7 +51,7 @@ assert.throws(() => helper.googleAuthSessionUrl(providerUrl, 'pluggd://other', '
 
 function flow({ platform = 'ios', browser = { type: 'success', url: `${callback}?code=returned-code` }, url = providerUrl } = {}) {
   const calls = [];
-  const user = { created_at: '2020-01-01T00:00:00Z', user_metadata: { retained: true } };
+  const user = { id: 'google-account-fixture', created_at: '2020-01-01T00:00:00Z', user_metadata: { retained: true } };
   const supabase = { auth: {
     async signInWithOAuth(options) { calls.push(['oauth', options]); return { data: { url }, error: null }; },
     async exchangeCodeForSession(code) { calls.push(['exchange', code]); return { data: { user }, error: null }; },
@@ -77,7 +77,9 @@ function flow({ platform = 'ios', browser = { type: 'success', url: `${callback}
 
 for (const platform of ['ios', 'android']) {
   const { auth, calls } = flow({ platform });
-  assert.equal((await auth.signInWithGoogle({ minimumAgeConfirmed: true })).isNewUser, false);
+  const signedIn = await auth.signInWithGoogle({ minimumAgeConfirmed: true });
+  assert.equal(signedIn.isNewUser, false);
+  assert.equal(signedIn.userId, 'google-account-fixture');
   const browser = calls.find(call => call[0] === 'browser');
   assert.equal(browser[1], platform === 'ios' ? iosUrl : providerUrl);
   assert.equal(browser[2], callback);

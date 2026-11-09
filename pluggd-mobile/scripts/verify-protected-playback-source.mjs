@@ -12,7 +12,7 @@ const scheduled = new Map();
 let now = 1_800_000_000_000;
 let timerId = 0;
 let invokeOverride;
-let response = { data: { signedUrl: 'https://preview.example/stream.mp3?token=short-lived' }, error: null };
+let response = { data: { signedUrl: 'https://preview.example/stream.mp3?token=short-lived', expiresIn: 300 }, error: null };
 const ageCatalog = releaseAgeCatalog({ releaseRows: [
   { id: 'release-1', user_id: 'owner', explicit: false },
   { id: 'release-2', user_id: 'owner', explicit: false, audio_url: 'https://cdn.example/release.mp3' },
@@ -68,7 +68,7 @@ assert.deepEqual(requests.pop(), {
 response = { data: null, error: new Error('signer unavailable') };
 assert.equal(await resolvePlaybackSource(beat), null, 'a paid Beat path must never become a fallback playback URL');
 
-response = { data: { signedUrl: 'https://preview.example/channel-one.mp3?token=fresh' }, error: null };
+response = { data: { signedUrl: 'https://preview.example/channel-one.mp3?token=fresh', expiresIn: 300 }, error: null };
 const mix = {
   id: 'mix-1', mixId: 'mix-1', type: 'mix',
   url: 'https://storage.example/storage/v1/object/public/audio-files/channel-one.mp3',

@@ -89,7 +89,7 @@ assert.match(
   /if \(!consent\.minimumAgeConfirmed\)/,
   'social OAuth must fail closed without explicit minimum-age confirmation',
 );
-assert.match(signupSource, /accessibilityRole="checkbox"/, 'signup must expose an accessible explicit age checkbox');
+assert.match(signupSource, /DateTimePicker[\s\S]*dateOfBirth[\s\S]*ageConfirmed/, 'signup must collect an actual date of birth and check minimum age');
 assert.match(signupSource, /minimumAgeConfirmed:\s*ageConfirmed/, 'signup social auth must pass the user-controlled age state');
 assert.match(loginSource, /performGoogleLogin\(true\)/, 'Google login must start only from the explicit confirmation action');
 assert.match(loginSource, /performAppleLogin\(true\)/, 'Apple login must start only from the explicit confirmation action');

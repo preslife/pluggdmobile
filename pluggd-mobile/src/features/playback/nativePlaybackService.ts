@@ -16,14 +16,35 @@ export function installNativePlaybackService(player = TrackPlayer): () => void {
   if (installed?.player === player) return installed.dispose;
   let alive = true;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
   let schedule = 0;
   let renewing = false;
   let readFailures = 0;
+  let releaseRetry: { id: string; url: string; at: number } | undefined;
   let lastTrack: PluggdTrack | undefined;
   const detach = attachPlaybackService();
   const stopObservingActor = observeMixActor();
   const stopObservingReleaseActor = releaseAgeAccess.observe();
   const clearTimer = () => { if (timer !== undefined) clearTimeout(timer); timer = undefined; };
+  const clearDeadline = () => { if (deadlineTimer !== undefined) clearTimeout(deadlineTimer); deadlineTimer = undefined; };
+  const armDeadline = (track: PluggdTrack) => {
+    clearDeadline();
+    if (!isReleaseTrack(track)) return;
+    const deadline = releaseAgeAccess.deadline(track);
+    if (deadline === null || !Number.isFinite(deadline)) return;
+    deadlineTimer = setTimeout(() => {
+      deadlineTimer = undefined;
+      void (async () => {
+        const [active, wants] = await Promise.all([player.getActiveTrack(), player.getPlayWhenReady()]);
+        const current = active as PluggdTrack | undefined;
+        if (alive && wants && current?.id === track.id && current.url === track.url
+          && releaseAgeAccess.authorized(current) && !releaseAgeAccess.playable(current)) {
+          await player.pause();
+          releaseAgeAccess.reportUnavailable();
+        }
+      })().catch(() => undefined);
+    }, Math.max(0, deadline - Date.now()));
+  };
   const failClosed = () => player.pause().catch(() => undefined);
 
   const renew = async (expected: PluggdTrack, ticket: number, beforeAdvance = false) => {
@@ -32,17 +53,22 @@ export function installNativePlaybackService(player = TrackPlayer): () => void {
     try {
       const wants = await player.getPlayWhenReady();
       if (alive && wants && currentNativePlaybackIntent(ticket)) {
-        // Native advancement can select an older queued release before JS is
-        // notified. Pause before its policy read; resume only the same intent.
-        if (beforeAdvance && isReleaseTrack(expected)) await player.pause();
+        const pausedForCheck = beforeAdvance && isReleaseTrack(expected) && !releaseAgeAccess.playable(expected);
+        if (pausedForCheck) await player.pause();
         const allowed = await refreshActivePrivateMix(player, expected, ticket);
-        if (beforeAdvance && allowed && alive && currentNativePlaybackIntent(ticket)) {
+        if (isReleaseTrack(expected)) releaseRetry = allowed ? undefined : { id: expected.id, url: expected.url, at: Date.now() + 15_000 };
+        if (pausedForCheck && allowed && alive && currentNativePlaybackIntent(ticket)) {
           const active = await player.getActiveTrack() as PluggdTrack | undefined;
-          if (active?.id === expected.id && hasCurrentPlaybackAccess(active) && currentNativePlaybackIntent(ticket)) await player.play();
+          if (active?.id === expected.id && releaseAgeAccess.playable(active) && currentNativePlaybackIntent(ticket)) await player.play();
         }
       }
-    } catch { if (alive && currentNativePlaybackIntent(ticket)) await failClosed(); }
-    finally { renewing = false; if (alive) await arm(); }
+    } catch {
+      if (alive && currentNativePlaybackIntent(ticket)) {
+        if (isReleaseTrack(expected) && hasCurrentPlaybackAccess(expected) && releaseAgeAccess.playable(expected)) {
+          releaseRetry = { id: expected.id, url: expected.url, at: Date.now() + 15_000 };
+        } else await failClosed();
+      }
+    } finally { renewing = false; if (alive) await arm(); }
   };
 
   const arm = async () => {
@@ -54,14 +80,21 @@ export function installNativePlaybackService(player = TrackPlayer): () => void {
       const [item, wants] = await Promise.all([player.getActiveTrack(), player.getPlayWhenReady()]);
       if (!alive || request !== schedule) return;
       if (!currentNativePlaybackIntent(ticket)) { void arm(); return; }
-      if (!wants) return;
+      if (!wants) { clearDeadline(); return; }
       const track = item as PluggdTrack | undefined;
       lastTrack = track;
       readFailures = 0;
-      if (!track || !requiresPlaybackAccess(track)) return;
+      if (!track || !requiresPlaybackAccess(track)) { clearDeadline(); return; }
+      armDeadline(track);
       if (!hasCurrentPlaybackAccess(track)) { await purgeInvalidPrivateMixes(player); return; }
+      if (isReleaseTrack(track) && !releaseAgeAccess.playable(track)) { await failClosed(); releaseAgeAccess.reportUnavailable(); return; }
       const expires = track.playbackSource?.expiresAt;
-      const delay = typeof expires === 'number' && Number.isFinite(expires) ? Math.max(0, expires - Date.now() - 30_000) : 0;
+      const retryAt = releaseRetry?.id === track.id && releaseRetry.url === track.url ? releaseRetry.at : 0;
+      const releaseRefresh = isReleaseTrack(track) ? releaseAgeAccess.refreshAt(track) : null;
+      const releaseDeadline = isReleaseTrack(track) ? releaseAgeAccess.deadline(track) : null;
+      const delay = isReleaseTrack(track) && releaseRefresh !== null && releaseDeadline !== null
+        ? Math.max(0, Math.min(Math.max(releaseRefresh, retryAt), releaseDeadline) - Date.now())
+        : typeof expires === 'number' && Number.isFinite(expires) ? Math.max(0, expires - Date.now() - 30_000) : 0;
       timer = setTimeout(() => {
         timer = undefined;
         if (alive && request === schedule) {
@@ -82,8 +115,8 @@ export function installNativePlaybackService(player = TrackPlayer): () => void {
         }, 1_000);
       } else if (lastTrack && requiresPlaybackAccess(lastTrack)) {
         if (lastTrack.mixAccess) mixAccessSession.invalidateAuthorization(lastTrack.mixAccess.authorizationId);
-        releaseAgeAccess.invalidate(lastTrack.releaseAccess);
-        await failClosed();
+        if (!isReleaseTrack(lastTrack) || !releaseAgeAccess.playable(lastTrack)) await failClosed();
+        else timer = setTimeout(() => { timer = undefined; if (alive) void arm(); }, 15_000);
       }
     }
   };
@@ -109,6 +142,13 @@ export function installNativePlaybackService(player = TrackPlayer): () => void {
     if (!alive) return;
     const track = event?.track as PluggdTrack | undefined;
     lastTrack = track;
+    if (track && isReleaseTrack(track)) {
+      // Queue construction already checked this exact source. A known-current
+      // clean entry advances entirely in native audio, with no network/pause.
+      if (releaseAgeAccess.playable(track)) { await arm(); return; }
+      await renew(track, nativePlaybackIntent(), true);
+      return;
+    }
     if (track && requiresPlaybackAccess(track)) {
       const expiry = track.playbackSource?.expiresAt;
       if (typeof expiry !== 'number' || expiry < Date.now() + 295_000) {
@@ -122,7 +162,8 @@ export function installNativePlaybackService(player = TrackPlayer): () => void {
     if (!alive) return;
     void purgeInvalidPrivateMixes(player).then(arm).catch(failClosed);
   });
-  const unsubscribeRelease = releaseAgeAccess.subscribe(() => {
+  const unsubscribeRelease = releaseAgeAccess.subscribe(reason => {
+    if (reason === 'unavailable') return;
     if (!alive) return;
     void player.getQueue().then(queue => {
       if ((queue as PluggdTrack[]).some(isReleaseTrack)) return purgeInvalidPrivateMixes(player).then(arm);
@@ -132,7 +173,7 @@ export function installNativePlaybackService(player = TrackPlayer): () => void {
 
   const dispose = () => {
     if (!alive) return;
-    alive = false; schedule++; clearTimer();
+    alive = false; schedule++; clearTimer(); clearDeadline();
     for (const subscription of subscriptions) subscription.remove();
     unsubscribe(); unsubscribeRelease(); stopObservingActor(); stopObservingReleaseActor(); detach();
     if (installed?.dispose === dispose) installed = undefined;

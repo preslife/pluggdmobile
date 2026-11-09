@@ -9,6 +9,7 @@ import { LAUNCH_ACCESS_REQUIRED } from "../config/environment";
 import { registerMobilePushToken } from "../lib/localNotifications";
 import { supabase } from "../lib/supabase";
 import { clearSupabaseAuthStorage } from "../lib/storage";
+import { privateDateOfBirth } from "../features/auth/private-date-of-birth";
 
 type AuthContextValue = {
   user: User | null;
@@ -33,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [launchAccessNotice, setLaunchAccessNotice] = useState<string | null>(null);
+
+  useEffect(() => { void privateDateOfBirth.cleanupExpired().catch(() => undefined); }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -104,6 +107,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user?.id) return;
     void registerMobilePushToken({ requestPermission: false });
   }, [user?.id]);
+
+  // Run outside Supabase's auth callback. Email confirmation may establish a
+  // session long after signup; only this identity's expiring local intent is read.
+  useEffect(() => {
+    if (!session?.user.id) return;
+    let current = true;
+    const timer = setTimeout(() => {
+      void privateDateOfBirth.resumeSignup(session.user.id, () => current).catch(() => {
+        // Retain the intent for retry in the in-app DOB prompt. Never log DOB.
+      });
+    }, 0);
+    return () => { current = false; clearTimeout(timer); };
+  }, [session?.user.id, session?.access_token]);
 
   const signOut = async () => {
     if (session?.access_token) {

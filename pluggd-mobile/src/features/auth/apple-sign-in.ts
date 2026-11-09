@@ -38,6 +38,7 @@ export function appleSignInAvailable() {
 
 export type AppleSignInResult = {
   isNewUser: boolean;
+  userId: string;
 };
 
 const bytesToHex = (bytes: Uint8Array) =>
@@ -116,5 +117,5 @@ export async function signInWithApple(consent: SocialAuthConsent): Promise<Apple
   const { error: metadataError } = await supabase.auth.updateUser({ data: nextMetadata });
   if (metadataError) throw metadataError;
 
-  return { isNewUser };
+  return { isNewUser, userId: data.user.id };
 }

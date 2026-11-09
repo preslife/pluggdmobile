@@ -1,7 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 import { PluggdImage } from '../../components/PluggdImage';
 import { useAuth } from '../../context/AuthProvider';
@@ -10,7 +9,7 @@ import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { pluggdFonts } from '../../design/typography';
 import { loadPostReleaseQueue } from './releasePostPlayback';
 import { nativePlaybackIntent } from '../playback/nativePlaybackControl';
-import { releaseAccessRecoveryUrl } from '../playback/releaseAgeAccess';
+import { releaseAccessRecoveryRoute } from '../playback/releaseAgeAccess';
 
 type Props = { releaseId: string; title: string; artist?: string | null; image?: string | null };
 
@@ -27,7 +26,7 @@ function ReleasePlayer({ releaseId, title, artist, image }: Props) {
   const { currentTrack, isPlaying, isBuffering, playQueue, togglePlayPause } = usePlayback();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [recoveryUrl, setRecoveryUrl] = useState<string | null>(null);
+  const [recoveryRoute, setRecoveryRoute] = useState<string | null>(null);
   const [canonicalId, setCanonicalId] = useState(releaseId);
   const pending = useRef<AbortController | null>(null);
   const mounted = useRef(true);
@@ -43,7 +42,7 @@ function ReleasePlayer({ releaseId, title, artist, image }: Props) {
     const request = new AbortController();
     const intent = nativePlaybackIntent();
     pending.current = request;
-    setBusy(true); setError(''); setRecoveryUrl(null);
+    setBusy(true); setError(''); setRecoveryRoute(null);
     try {
       if (active) await togglePlayPause();
       else {
@@ -62,7 +61,7 @@ function ReleasePlayer({ releaseId, title, artist, image }: Props) {
     } catch (cause) {
       if (mounted.current && !request.signal.aborted) {
         setError(cause instanceof Error ? cause.message : 'Playback could not start. Please try again.');
-        setRecoveryUrl(releaseAccessRecoveryUrl(cause));
+        setRecoveryRoute(releaseAccessRecoveryRoute(cause));
       }
     } finally {
       if (pending.current === request) pending.current = null;
@@ -87,10 +86,10 @@ function ReleasePlayer({ releaseId, title, artist, image }: Props) {
       </Pressable>
     </View>
     {error ? <Text accessibilityRole="alert" style={[styles.error, { color: theme.colors.textMuted }]}>{error}</Text> : null}
-    {recoveryUrl ? <Pressable accessibilityRole="link" accessibilityLabel="Open PLUGGD account settings on the web" style={{ minHeight: 44, justifyContent: 'center' }} onPress={event => {
+    {recoveryRoute ? <Pressable accessibilityRole="button" accessibilityLabel="Add date of birth" style={{ minHeight: 44, justifyContent: 'center' }} onPress={event => {
       event.stopPropagation();
-      void WebBrowser.openBrowserAsync(recoveryUrl).catch(() => { if (mounted.current) setError('Open pluggd.fm in your browser, then Dashboard → Settings → Account → Optional personal details.'); });
-    }}><Text style={{ color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold }}>Open account on web</Text></Pressable> : null}
+      router.push(recoveryRoute as '/auth/date-of-birth');
+    }}><Text style={{ color: theme.colors.accentText, fontFamily: pluggdFonts.satoshiBold }}>Add date of birth</Text></Pressable> : null}
   </View>;
 }
 

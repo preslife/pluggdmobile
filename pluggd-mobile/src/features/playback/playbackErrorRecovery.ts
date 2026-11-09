@@ -36,17 +36,28 @@ export function createPlaybackErrorRecovery({
   refreshSource,
   needsSourceRefresh,
   onSourceRefreshed,
+  keepCurrentSource,
+  retrySourceFailure,
+  sourceExpiry,
+  sourceDeadline,
+  onSourceExpired,
 }: {
   player: RecoveryPlayer;
   isForeground: () => boolean;
   reportFailure: () => void;
   refreshSource?: (track: RecoveryTrack) => Promise<RecoveryTrack | null>;
   needsSourceRefresh?: (track: RecoveryTrack) => boolean;
+  sourceExpiry?: (track: RecoveryTrack) => number | null | undefined;
+  sourceDeadline?: (track: RecoveryTrack) => number | null;
+  onSourceExpired?: (track: RecoveryTrack) => void;
+  retrySourceFailure?: (track: RecoveryTrack) => number | null;
+  keepCurrentSource?: (previous: RecoveryTrack, next: RecoveryTrack) => boolean;
   onSourceRefreshed?: (previous: RecoveryTrack, next: RecoveryTrack, index: number) => void;
 }) {
   let generation = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let expiryTimer: ReturnType<typeof setTimeout> | null = null;
+  let deadlineTimer: ReturnType<typeof setTimeout> | null = null;
   let phase: 'idle' | 'waiting' | 'refreshing' | 'retrying' | 'attempted' | 'recovered' | 'exhausted' = 'idle';
   let usedRetry = false;
   let pendingFailure = false;
@@ -76,6 +87,8 @@ export function createPlaybackErrorRecovery({
     generation++;
     if (timer !== null) clearTimeout(timer);
     if (expiryTimer !== null) clearTimeout(expiryTimer);
+    if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+    deadlineTimer = null;
     timer = null;
     expiryTimer = null;
     pendingFailure = false;
@@ -91,15 +104,49 @@ export function createPlaybackErrorRecovery({
   const watchSource = (track: RecoveryTrack | null | undefined, playing: boolean) => {
     if (expiryTimer !== null) clearTimeout(expiryTimer);
     expiryTimer = null;
-    const expiry = track?.playbackSource?.expiresAt;
+    if (deadlineTimer !== null) clearTimeout(deadlineTimer);
+    deadlineTimer = null;
+    const deadline = track && sourceDeadline?.(track);
+    if (track && playing && !disposed && !suspended && typeof deadline === 'number' && Number.isFinite(deadline)) {
+      const request = generation;
+      const expected = trackKey(track);
+      deadlineTimer = setTimeout(() => {
+        deadlineTimer = null;
+        void (async () => {
+          const [active, wants] = await Promise.all([player.getActiveTrack(), player.getPlayWhenReady?.()]);
+          if (!isCurrent(request) || !active || !wants || trackKey(active) !== expected) return;
+          const currentDeadline = sourceDeadline?.(active);
+          if (typeof currentDeadline === 'number' && Date.now() >= currentDeadline) {
+            onSourceExpired?.(active);
+            fail();
+          }
+        })().catch(() => undefined);
+      }, Math.max(0, deadline - Date.now()));
+    }
+    const expiry = track && sourceExpiry ? sourceExpiry(track) : track?.playbackSource?.expiresAt;
     if (!track || !playing || disposed || suspended || phase === 'exhausted' || !canRenew()
       || typeof expiry !== 'number' || !Number.isFinite(expiry) || trackKey(track) === lastRenewalKey) return;
     const request = generation;
     expiryTimer = setTimeout(() => {
       expiryTimer = null;
       if (!isCurrent(request) || phase === 'refreshing' || phase === 'waiting' || phase === 'retrying') return;
-      void renewSource(track, request, 0).catch(() => { if (isCurrent(request)) fail(); });
+      void renewWithRetry(track, request);
     }, Math.max(0, expiry - 30_000 - Date.now()));
+  };
+
+  const renewWithRetry = async (track: RecoveryTrack, request: number): Promise<void> => {
+    try { await renewSource(track, request, 0); }
+    catch {
+      if (!isCurrent(request)) return;
+      const delay = retrySourceFailure?.(track);
+      if (typeof delay === 'number' && Number.isFinite(delay) && delay > 0) {
+        phase = 'idle'; lastRenewalKey = null;
+        expiryTimer = setTimeout(() => {
+          expiryTimer = null;
+          if (isCurrent(request)) void renewWithRetry(track, request);
+        }, delay);
+      } else fail();
+    }
   };
 
   const renewSource = async (track: RecoveryTrack, request: number, fallbackPosition: number) => {
@@ -109,7 +156,7 @@ export function createPlaybackErrorRecovery({
     phase = 'refreshing';
     const next = await refreshSource!(track);
     if (!isCurrent(request)) return;
-    if (!next || trackKey(next) === expected || (typeof next.playbackSource?.expiresAt === 'number' && next.playbackSource.expiresAt <= Date.now() + 30_000)) {
+    if (!next || (trackKey(next) === expected && !keepCurrentSource?.(track, next)) || (typeof next.playbackSource?.expiresAt === 'number' && next.playbackSource.expiresAt <= Date.now() + 30_000)) {
       throw new Error('No fresh authorized audio source');
     }
     const [active, wantsPlayback, progress, index] = await Promise.all([
@@ -125,6 +172,15 @@ export function createPlaybackErrorRecovery({
     // zero and trusts the live native position, including a genuine start.
     const position = Number.isFinite(progress.position) && progress.position > 0
       ? progress.position : Math.max(0, fallbackPosition || 0);
+    if (trackKey(next) === expected && keepCurrentSource?.(track, next)) {
+      // A successful canonical/TTL acknowledgement may retain exactly the same
+      // URL. Update its proof and schedule without disturbing audible native audio.
+      onSourceRefreshed?.(track, next, index!);
+      lastRenewalKey = null;
+      phase = 'recovered';
+      watchSource(next, true);
+      return;
+    }
     phase = 'retrying';
     replacement = { key: trackKey(next), index: index! };
     replacementOwner = request;

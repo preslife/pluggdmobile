@@ -26,6 +26,7 @@ import { storePendingAccessCode, validateAccessCode } from '../../src/features/a
 import { LAUNCH_ACCESS_REQUIRED, MINIMUM_AGE } from '../../src/config/environment';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
+import { privateDateOfBirth } from '../../src/features/auth/private-date-of-birth';
 import {
   isAppleSignInCancellation,
   signInWithApple,
@@ -85,6 +86,7 @@ export default function SignUp() {
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [verificationPending, setVerificationPending] = useState(false);
   const strength = getPasswordStrength(password);
   const maximumBirthDate = latestEligibleBirthDate();
   const minimumBirthDate = new Date(1900, 0, 1, 12);
@@ -93,6 +95,27 @@ export default function SignUp() {
     theme.scheme === 'dark'
       ? (['#050505', '#090909', '#0F0A07'] as const)
       : (['#FFFFFF', '#FAFAF8', '#FFF1E8'] as const);
+
+  const finishSignUp = async (userId: string, hasSession: boolean) => {
+    if (!dateOfBirth) return;
+    // Only the date typed in this signup flow is retained, keyed to Auth's
+    // actual returned identity. Metadata is never a date-of-birth authority.
+    try { await privateDateOfBirth.rememberSignup(userId, formatBirthDateForStorage(dateOfBirth), !hasSession); }
+    catch {
+      if (!hasSession) {
+        setVerificationPending(true);
+        setError('Your account was created. After confirming your email, add your private date of birth in PLUGGD.');
+      } else router.replace({ pathname: '/auth/date-of-birth', params: { continueTo: 'role' } } as any);
+      return;
+    }
+    if (!hasSession) { setVerificationPending(true); return; }
+    try { await privateDateOfBirth.resumeSignup(userId); }
+    catch {
+      router.replace({ pathname: '/auth/date-of-birth', params: { continueTo: 'role' } } as any);
+      return;
+    }
+    router.replace('/auth/role' as any);
+  };
 
   const handleSignUp = async () => {
     setLoading(true);
@@ -140,7 +163,6 @@ export default function SignUp() {
             access_code: LAUNCH_ACCESS_REQUIRED ? validation.code : undefined,
             age_band: '16_plus',
             minimum_age_confirmed: true,
-            date_of_birth: formatBirthDateForStorage(dateOfBirth),
           },
         },
       });
@@ -148,10 +170,8 @@ export default function SignUp() {
       if (signUpError) {
         setError(signUpError.message);
       } else {
-        if (signUpData.user) {
-          await (supabase as any).from('profiles').update({ date_of_birth: formatBirthDateForStorage(dateOfBirth), updated_at: new Date().toISOString() }).eq('user_id', signUpData.user.id);
-        }
-        router.replace('/auth/role' as any);
+        if (!signUpData.user?.id) throw new Error('Your account could not be confirmed. Please sign in to continue.');
+        await finishSignUp(signUpData.user.id, Boolean(signUpData.session));
       }
     } catch (authError: any) {
       setError(authError?.message ?? 'Unable to create account.');
@@ -174,12 +194,8 @@ export default function SignUp() {
     setLoading(true);
     await clearLaunchAccessNotice();
     try {
-      await signInWithApple({ minimumAgeConfirmed: true });
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData.user) {
-        await (supabase as any).from('profiles').update({ date_of_birth: formatBirthDateForStorage(dateOfBirth), updated_at: new Date().toISOString() }).eq('user_id', authData.user.id);
-      }
-      router.replace('/auth/role' as any);
+      const result = await signInWithApple({ minimumAgeConfirmed: ageConfirmed });
+      await finishSignUp(result.userId, true);
     } catch (authError: any) {
       if (!isAppleSignInCancellation(authError)) {
         setError(authError?.message ?? 'Unable to sign up with Apple.');
@@ -203,12 +219,8 @@ export default function SignUp() {
     setLoading(true);
     await clearLaunchAccessNotice();
     try {
-      await signInWithGoogle({ minimumAgeConfirmed: true });
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData.user) {
-        await (supabase as any).from('profiles').update({ date_of_birth: formatBirthDateForStorage(dateOfBirth), updated_at: new Date().toISOString() }).eq('user_id', authData.user.id);
-      }
-      router.replace('/auth/role' as any);
+      const result = await signInWithGoogle({ minimumAgeConfirmed: ageConfirmed });
+      await finishSignUp(result.userId, true);
     } catch (authError: any) {
       if (!isGoogleSignInCancellation(authError)) {
         setError(authError?.message ?? 'Unable to sign up with Google.');
@@ -402,7 +414,10 @@ export default function SignUp() {
               </View>
             ) : null}
 
-            <Pressable
+            {verificationPending ? <View accessibilityLiveRegion="polite" style={{ gap: 12, marginVertical: 16 }}>
+              <Text style={[styles.subtitle, { color: theme.colors.text }]}>Check your email to confirm your account, then sign in here to finish setting up your private details.</Text>
+              <Pressable accessibilityRole="button" onPress={() => router.replace('/auth/login')} style={styles.cta}><Text style={styles.ctaText}>Go to sign in</Text></Pressable>
+            </View> : <Pressable
               accessibilityRole="button"
               accessibilityLabel={loading ? 'Creating account' : 'Create account'}
               onPress={handleSignUp}
@@ -411,9 +426,9 @@ export default function SignUp() {
             >
               <Text style={styles.ctaText}>{loading ? 'Creating...' : 'Create account'}</Text>
               {!loading ? <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" /> : null}
-            </Pressable>
+            </Pressable>}
 
-            {!LAUNCH_ACCESS_REQUIRED ? (
+            {!LAUNCH_ACCESS_REQUIRED && !verificationPending ? (
               <>
                 <View style={styles.authDivider}>
                   <View style={[styles.authDividerLine, { backgroundColor: theme.colors.border }]} />

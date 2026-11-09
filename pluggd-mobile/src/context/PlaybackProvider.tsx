@@ -240,6 +240,12 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   const [mixMetadataRefreshing, setMixMetadataRefreshing] = useState(false);
   const [, notifyMixPresentation] = useState(0);
   const [mixRecovery, setMixRecovery] = useState<{ mixId: string; accessKey?: string; scope: MixPlaybackAccess['scope']; ticket: number } | null>(null);
+  const pendingReleaseFailure = useRef(false);
+  const reportReleaseFailure = useCallback(() => {
+    if (AppState.currentState !== 'active') { pendingReleaseFailure.current = true; return; }
+    pendingReleaseFailure.current = false;
+    Alert.alert('Audio temporarily unavailable', 'Your queue has been kept. Tap play to try again when your connection returns.');
+  }, []);
   const pendingPrivateFailure = useRef(false);
   const reportPrivateFailure = useCallback(() => {
     if (AppState.currentState !== 'active') { pendingPrivateFailure.current = true; return; }
@@ -248,6 +254,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   }, []);
   const beginControl = useCallback(() => {
     setMixRecovery(null);
+    pendingReleaseFailure.current = false;
     pendingPrivateFailure.current = false;
     privateOperations.current.clear();
     setPrivateControlPending(false);
@@ -272,6 +279,16 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       player: TrackPlayer,
       isForeground: () => AppState.currentState === 'active',
       refreshSource: (track) => resolvePlaybackTrack(track as PluggdTrack),
+      sourceExpiry: track => isReleaseTrack(track as PluggdTrack) ? releaseAgeAccess.sourceExpiresAt(track as PluggdTrack) : track.playbackSource?.expiresAt,
+      sourceDeadline: track => isReleaseTrack(track as PluggdTrack) ? releaseAgeAccess.deadline(track as PluggdTrack) : null,
+      onSourceExpired: () => { void TrackPlayer.pause().catch(() => undefined); },
+      retrySourceFailure: track => {
+        if (!isReleaseTrack(track as PluggdTrack) || !releaseAgeAccess.authorized(track as PluggdTrack)) return null;
+        const deadline = releaseAgeAccess.deadline(track as PluggdTrack);
+        if (deadline === null || Date.now() >= deadline) { void TrackPlayer.pause().catch(() => undefined); return null; }
+        return Math.min(15_000, deadline - Date.now());
+      },
+      keepCurrentSource: (previous, next) => isReleaseTrack(previous as PluggdTrack) && previous.url === next.url && releaseAgeAccess.playable(next as PluggdTrack),
       needsSourceRefresh: (track) => playbackSourceNeedsRefresh(track as PluggdTrack),
       onSourceRefreshed: (previous, next, index) => {
         setQueue((current) => current.map((track, itemIndex) => itemIndex === index && track.id === previous.id && track.url === previous.url
@@ -356,6 +373,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stopObserving = releaseAgeAccess.observe();
     const unsubscribe = releaseAgeAccess.subscribe(reason => {
+      if (reason === 'unavailable') { reportReleaseFailure(); return; }
       const invalidActive = isReleaseTrack(activeTrackRef.current) && !hasCurrentPlaybackAccess(activeTrackRef.current);
       const invalidQueued = originalQueue.current.some(track => isReleaseTrack(track) && !hasCurrentPlaybackAccess(track));
       if (!invalidActive && !invalidQueued) return;
@@ -373,7 +391,7 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       void purgeInvalidPrivateMixes(TrackPlayer).then(setQueue).catch(() => TrackPlayer.pause().catch(() => undefined));
     });
     return () => { unsubscribe(); stopObserving(); };
-  }, [recovery]);
+  }, [recovery, reportReleaseFailure]);
 
   useEffect(() => {
     if (!isReady) return;
@@ -412,13 +430,14 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       setProgressInterval(state === 'active' ? 250 : 1000);
       pausedPresentation.current?.foregroundChanged();
       recovery.showPendingFailure();
+      if (state === 'active' && pendingReleaseFailure.current) reportReleaseFailure();
       if (state === 'active' && pendingPrivateFailure.current) reportPrivateFailure();
     });
     return () => {
       subscription.remove();
       recovery.dispose();
     };
-  }, [recovery, reportPrivateFailure]);
+  }, [recovery, reportPrivateFailure, reportReleaseFailure]);
 
   useEffect(() => {
     const watcher = createPausedMixPresentation({
@@ -459,6 +478,34 @@ export function PlaybackProvider({ children }: { children: ReactNode }) {
       // player not ready yet
     }
   }, []);
+
+  // Public CDN releases have no URL expiry. Maintain their independent policy
+  // refresh while the native service is detached, without audio reloads/pauses.
+  useEffect(() => {
+    const track = activeTrack as PluggdTrack | undefined;
+    if (serviceAttached || !isPlaying || !track || !isReleaseTrack(track) || track.playbackSource?.expiresAt !== null) return;
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const arm = (retryAt = 0) => {
+      if (disposed || !releaseAgeAccess.authorized(track)) return;
+      const refreshAt = releaseAgeAccess.refreshAt(track), deadline = releaseAgeAccess.deadline(track);
+      if (refreshAt === null || deadline === null) return;
+      timer = setTimeout(() => {
+        timer = undefined;
+        void (async () => {
+          const ticket = nativePlaybackIntent();
+          if (disposed || !await TrackPlayer.getPlayWhenReady()) return;
+          const allowed = await refreshActivePrivateMix(TrackPlayer, track, ticket);
+          if (disposed || !currentNativePlaybackIntent(ticket)) return;
+          await syncQueue();
+          recovery.watchSource(track, true);
+          if (await TrackPlayer.getPlayWhenReady()) arm(allowed ? 0 : Date.now() + 15_000);
+        })().catch(() => { if (!disposed) arm(Date.now() + 15_000); });
+      }, Math.max(0, Math.min(Math.max(refreshAt, retryAt), deadline) - Date.now()));
+    };
+    arm();
+    return () => { disposed = true; if (timer !== undefined) clearTimeout(timer); };
+  }, [activeTrack, isPlaying, serviceAttached, syncQueue, recovery]);
 
   const accessFailureRequest = useRef<number | null>(null);
   const resolveTrackWithFeedback = async (track: PluggdTrack) => {

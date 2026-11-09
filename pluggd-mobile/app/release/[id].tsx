@@ -34,7 +34,7 @@ import { releaseShareContent } from '../../src/lib/musicShare';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { releaseAccessAlertButtons } from '../../src/features/playback/releaseAccessFeedback';
 import { releaseReference } from '../../src/features/playback/releaseReference';
-import { assertReleaseAccess, assertReleaseGrantCurrent, releaseAccessMessage, releaseAccessRecoveryUrl } from '../../src/features/playback/releaseAgeAccess';
+import { assertReleaseAccess, assertReleaseGrantCurrent, releaseAccessMessage, releaseAccessRecoveryRoute } from '../../src/features/playback/releaseAgeAccess';
 import { ReleaseMusicAction } from '../../src/features/social-music/ReleaseMusicAction';
 
 interface ReleaseDetail {
@@ -550,7 +550,7 @@ export default function ReleaseDetailScreen() {
       });
     } catch (error) {
       setPlaybackError(releaseAccessMessage(error));
-      if (releaseAccessRecoveryUrl(error)) Alert.alert('Confirm your age', releaseAccessMessage(error), releaseAccessAlertButtons(error));
+      if (releaseAccessRecoveryRoute(error)) Alert.alert('Confirm your age', releaseAccessMessage(error), releaseAccessAlertButtons(error));
     } finally {
       setStartingPlayback(false);
     }
@@ -568,7 +568,7 @@ export default function ReleaseDetailScreen() {
       if (!active) setPlaybackError('This track did not start. Please try again.');
     } catch (error) {
       setPlaybackError(releaseAccessMessage(error));
-      if (releaseAccessRecoveryUrl(error)) Alert.alert('Confirm your age', releaseAccessMessage(error), releaseAccessAlertButtons(error));
+      if (releaseAccessRecoveryRoute(error)) Alert.alert('Confirm your age', releaseAccessMessage(error), releaseAccessAlertButtons(error));
     }
     finally { setStartingPlayback(false); }
   }
