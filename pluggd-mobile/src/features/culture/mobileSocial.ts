@@ -561,28 +561,56 @@ export async function addSocialComment(postId: string, content: string) {
   return error ? { success: false, error: error.message } : { success: true };
 }
 
-export async function toggleSocialLike(postId: string) {
+export async function toggleSocialLike(postId: string, expectedActorId?: string, expectedToken?: string) {
+  const stale = () => ({ success: false, error: 'Your account changed. Please try again.' });
+  const initial = expectedActorId ? await supabase.auth.getSession() : null;
+  const captured = initial?.data.session;
+  const scope = captured ? { actor: captured.user.id, token: captured.access_token } : null;
+  if (expectedActorId && (initial?.error || !scope?.token || scope.actor !== expectedActorId || (expectedToken && scope.token !== expectedToken))) return stale();
   const userId = await currentUserId();
   if (!userId) return { success: false, error: 'Sign in to like posts.' };
-  const existing = await safeMaybe<any>((supabase as any).from('social_likes').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle());
-  if (existing?.id) {
-    const { error } = await (supabase as any).from('social_likes').delete().eq('id', existing.id);
-    return error ? { success: false, error: error.message } : { success: true, liked: false };
-  }
-  const { error } = await (supabase as any).from('social_likes').insert({ post_id: postId, user_id: userId });
-  return error && !isDuplicateError(error) ? { success: false, error: error.message } : { success: true, liked: true };
+  if (expectedActorId && userId !== expectedActorId) return stale();
+  const current = async () => {
+    if (!scope) return true;
+    const next = await supabase.auth.getSession();
+    return !next.error && next.data.session?.user.id === scope.actor && next.data.session?.access_token === scope.token;
+  };
+  const pin = (builder: any) => scope ? builder.setHeader('Authorization', `Bearer ${scope.token}`) : builder;
+  if (!await current()) return stale();
+  const existing = await pin((supabase as any).from('social_likes').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle());
+  if (existing.error) return { success: false, error: existing.error.message };
+  if (!await current()) return stale();
+  const result = await pin(existing.data?.id
+    ? (supabase as any).from('social_likes').delete().eq('id', existing.data.id).eq('user_id', userId)
+    : (supabase as any).from('social_likes').insert({ post_id: postId, user_id: userId }));
+  if (!await current()) return stale();
+  return result.error && !isDuplicateError(result.error) ? { success: false, error: result.error.message } : { success: true, liked: !existing.data?.id };
 }
 
-export async function toggleSocialBookmark(postId: string) {
+export async function toggleSocialBookmark(postId: string, expectedActorId?: string, expectedToken?: string) {
+  const stale = () => ({ success: false, error: 'Your account changed. Please try again.' });
+  const initial = expectedActorId ? await supabase.auth.getSession() : null;
+  const captured = initial?.data.session;
+  const scope = captured ? { actor: captured.user.id, token: captured.access_token } : null;
+  if (expectedActorId && (initial?.error || !scope?.token || scope.actor !== expectedActorId || (expectedToken && scope.token !== expectedToken))) return stale();
   const userId = await currentUserId();
   if (!userId) return { success: false, error: 'Sign in to save posts.' };
-  const existing = await safeMaybe<any>((supabase as any).from('social_bookmarks').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle());
-  if (existing?.id) {
-    const { error } = await (supabase as any).from('social_bookmarks').delete().eq('id', existing.id);
-    return error ? { success: false, error: error.message } : { success: true, bookmarked: false };
-  }
-  const { error } = await (supabase as any).from('social_bookmarks').insert({ post_id: postId, user_id: userId });
-  return error && !isDuplicateError(error) ? { success: false, error: error.message } : { success: true, bookmarked: true };
+  if (expectedActorId && userId !== expectedActorId) return stale();
+  const current = async () => {
+    if (!scope) return true;
+    const next = await supabase.auth.getSession();
+    return !next.error && next.data.session?.user.id === scope.actor && next.data.session?.access_token === scope.token;
+  };
+  const pin = (builder: any) => scope ? builder.setHeader('Authorization', `Bearer ${scope.token}`) : builder;
+  if (!await current()) return stale();
+  const existing = await pin((supabase as any).from('social_bookmarks').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle());
+  if (existing.error) return { success: false, error: existing.error.message };
+  if (!await current()) return stale();
+  const result = await pin(existing.data?.id
+    ? (supabase as any).from('social_bookmarks').delete().eq('id', existing.data.id).eq('user_id', userId)
+    : (supabase as any).from('social_bookmarks').insert({ post_id: postId, user_id: userId }));
+  if (!await current()) return stale();
+  return result.error && !isDuplicateError(result.error) ? { success: false, error: result.error.message } : { success: true, bookmarked: !existing.data?.id };
 }
 
 export async function toggleSocialRepost(postId: string, expectedActorId?: string) {

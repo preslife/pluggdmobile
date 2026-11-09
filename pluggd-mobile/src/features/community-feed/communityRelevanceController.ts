@@ -1,9 +1,17 @@
+import { postInteractionRevision, reconcilePostInteractions } from '../culture/postInteractionState';
 import { RecommendationEventBatch, canCollectRecommendations, confirmedRecommendationShare, feedSource, type NativeFeedMode, type RelevanceContext, type RecommendationCursor, type RecommendationMetadata } from './communityRelevanceModel';
 import { nativeRelevanceApi, relevanceUuid, type NativeRelevanceApi, type RelevanceActor } from './communityRelevanceService';
 import type { MobileSocialPost } from '../culture/mobileTypes';
 
 export type RelevanceState = { mode: NativeFeedMode; posts: MobileSocialPost[]; context: RelevanceContext | null; metadata: Record<string, RecommendationMetadata>; loading: boolean; loadingMore: boolean; hasMore: boolean; error: string | null; notice: string | null; undo: string | null; busy: boolean };
 const controllers = new Set<NativeRelevanceController>();
+
+export function removeLoadedCommunityPosts(actorId: string | null, token: string | null, target: { postId?: string; authorId?: string }) {
+  for (const controller of controllers) {
+    if (controller.actor?.id === actorId && controller.actor?.token === token) controller.removeLoadedPosts(target);
+  }
+}
+
 let openRevision = 0;
 let openAbort = new AbortController();
 let pendingOpen: { actor: RelevanceActor; epoch: string; postId: string; requestId: string; expires: number; api: NativeRelevanceApi } | null = null;
@@ -62,6 +70,7 @@ export class NativeRelevanceController {
   private batch: RecommendationEventBatch;
   private selected = false;
   private lifecycle = 0;
+  private hidden: { token: string; rows: Array<{ post: MobileSocialPost; index: number }> } | null = null;
   state: RelevanceState;
   constructor(readonly actor: RelevanceActor | null, readonly api: NativeRelevanceApi = nativeRelevanceApi(actor), mode: NativeFeedMode = 'latest', private contextOnly = false) {
     this.state = { mode, posts: [], context: null, metadata: {}, loading: true, loadingMore: false, hasMore: false, error: null, notice: null, undo: null, busy: false };
@@ -74,6 +83,7 @@ export class NativeRelevanceController {
   private clearViews() { this.views.forEach(clearTimeout); this.views.clear(); }
   invalidate(clearContext = true) {
     ++this.generation;
+    this.hidden = null;
     this.abort.abort(); this.abort = new AbortController();
     this.batch.clear(); this.clearViews(); this.requestId = null; this.cursor = null;
     this.update({ posts: [], metadata: {}, hasMore: false, loadingMore: false, loading: this.active, busy: false, error: null, ...(clearContext ? { context: null, undo: null, notice: null } : {}) });
@@ -91,6 +101,7 @@ export class NativeRelevanceController {
   restoreMode(mode: NativeFeedMode) { if (!this.selected && mode !== this.state.mode) { this.update({ mode }); if (this.active) void this.refresh(); } }
   async refresh(context?: RelevanceContext, preserveUndo = false, preserveBusy = false) {
     if (!this.active) return;
+    const interactionRevision = postInteractionRevision();
     this.invalidate(false);
     this.update({ loading: true, busy: preserveBusy, ...(preserveUndo ? {} : { undo: null, notice: null }) });
     const generation = this.generation;
@@ -106,16 +117,26 @@ export class NativeRelevanceController {
         if (!this.current(generation)) return;
         this.requestId = page.requestId; this.cursor = page.cursor;
         this.update({ posts: page.posts, metadata: page.metadata, hasMore: page.hasMore });
+        reconcilePostInteractions(this.actor?.id ?? null, this.actor?.token ?? null, page.posts, interactionRevision);
       } else {
         const posts = await this.api.baseline(source === 'following' ? 'following' : source === 'v2' ? 'v2' : 'latest', signal);
         if (!this.current(generation)) return;
         this.update({ posts, metadata: {}, hasMore: false });
+        reconcilePostInteractions(this.actor?.id ?? null, this.actor?.token ?? null, posts, interactionRevision);
         if (this.state.mode === 'for-you' && next?.shadow) void this.api.page(next, null, null, signal).catch(() => undefined); // Compute/discard unseen shadow; no telemetry.
       }
     } catch (error) { if (this.current(generation)) this.update({ error: error instanceof Error ? error.message : 'Community could not load. Please try again.' }); }
     finally { if (this.current(generation)) this.update({ loading: false }); }
   }
   private current(generation: number) { return this.active && generation === this.generation && !this.abort.signal.aborted; }
+  removeLoadedPosts(target: { postId?: string; authorId?: string }) {
+    // Retire stale page reads without losing the delivery/cursor/Undo snapshot.
+    ++this.generation; this.abort.abort(); this.abort = new AbortController(); this.clearViews();
+    const matches = (post: MobileSocialPost) => target.postId ? post.id === target.postId : post.user_id === target.authorId;
+    const redact = (post: MobileSocialPost) => post.original_post && matches(post.original_post as MobileSocialPost) ? { ...post, original_post: null } : post;
+    if (this.hidden) this.hidden.rows = this.hidden.rows.filter(row => !matches(row.post)).map(row => ({ ...row, post: redact(row.post) }));
+    this.update({ posts: this.state.posts.filter(post => !matches(post)).map(redact), loading: false, loadingMore: false, busy: false });
+  }
   async more() {
     if (!this.active || this.state.loading || this.state.loadingMore || !this.state.hasMore || !this.state.context || !this.requestId || !this.cursor) return;
     const generation = this.generation;
@@ -176,8 +197,9 @@ export class NativeRelevanceController {
     try {
       const token = await this.api.suppress(meta.requestId, postId, scope, this.abort.signal);
       if (!this.current(generation)) return;
+      this.hidden = { token, rows: this.state.posts.flatMap((post, index) => (scope === 'author' ? post.user_id === meta.authorId : post.id === postId) ? [{ post, index }] : []) };
       this.update({ posts: this.state.posts.filter(post => scope === 'author' ? post.user_id !== meta.authorId : post.id !== postId), undo: token, notice: scope === 'author' ? 'You’ll see fewer posts from this creator.' : 'Recommendation hidden.' });
-      await this.refresh(undefined, true);
+
     } catch (error) { if (this.current(generation)) this.update({ error: error instanceof Error ? error.message : 'Your choice could not be saved.' }); }
     finally { if (this.current(generation)) this.update({ busy: false }); }
   }
@@ -189,8 +211,14 @@ export class NativeRelevanceController {
     try {
       const result = await this.api.undo(token, this.abort.signal);
       if (!this.current(generation)) return;
+      if (result && this.hidden?.token === token) {
+        const posts = [...this.state.posts];
+        for (const row of this.hidden.rows) if (!posts.some(post => post.id === row.post.id)) posts.splice(Math.min(row.index, posts.length), 0, row.post);
+        this.update({ posts });
+      }
+      this.hidden = null;
       this.update({ undo: null, notice: result ? 'Your choice was undone.' : 'This choice has expired. Refresh for current recommendations.' });
-      await this.refresh(undefined, true);
+
     } catch (error) { if (this.current(generation)) this.update({ error: error instanceof Error ? error.message : 'Your choice could not be undone.' }); }
     finally { if (this.current(generation)) this.update({ busy: false }); }
   }

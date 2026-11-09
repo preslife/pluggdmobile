@@ -3,7 +3,7 @@ import { pluggdFonts } from '../../design/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Alert, Linking, Platform, Pressable, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Image, PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
@@ -26,6 +26,8 @@ import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { useAuth } from '../../context/AuthProvider';
 import { MobileSocialInlineVideo } from './MobileSocialInlineVideo';
 import { useSuspendInlineVideos } from './useInlineVideoVisibility';
+import { bindPostInteractionScope, beginPostInteraction, finishPostInteraction, currentPostInteractionScope, postInteractionSnapshot, subscribePostInteractions, observePostInteractionQueries, removePostQuerySnapshots, updatePollInPlace } from './postInteractionState';
+import { removeLoadedCommunityPosts } from '../community-feed/communityRelevanceController';
 import { shareWithRecommendationConfirmation } from '../community-feed/communityRelevanceController';
 import { CommunityReleasePlayer } from '../community-feed/CommunityReleasePlayer';
 import { releaseIdForPost } from '../community-feed/releasePostPlayback';
@@ -316,7 +318,7 @@ function PollCard({
   onMutated,
 }: {
   post: MobileSocialPostPreview;
-  onMutated: () => void;
+  onMutated: (poll: MobileSocialPostPreview['poll'] | undefined, selected: string) => void;
 }) {
   const styles = usePostStyles();
   const [pending, setPending] = useState<string | null>(null);
@@ -345,7 +347,7 @@ function PollCard({
                 Alert.alert('Vote failed', result.error || 'Could not vote right now.');
                 return;
               }
-              onMutated();
+              onMutated(result.poll, result.selectedOptionId);
             }}
           >
             <View style={[styles.pollFill, { width: `${pct}%` }]} />
@@ -359,12 +361,18 @@ function PollCard({
   );
 }
 
-export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, onRecommendationOpen, prepareRecommendationShare, onRecommendationAudio }: MobileSocialPostCardProps) {
+export function MobileSocialPostCard({ post: suppliedPost, variant = 'timeline', onMutated, onRecommendationOpen, prepareRecommendationShare, onRecommendationAudio }: MobileSocialPostCardProps) {
   const styles = usePostStyles();
   const theme = usePluggdTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, session } = useAuth();
+  const interactionScope = bindPostInteractionScope(user?.id ?? null, session?.access_token ?? null);
+  const interactions = useSyncExternalStore(subscribePostInteractions, () => postInteractionSnapshot(suppliedPost), () => postInteractionSnapshot(suppliedPost));
+  const post = { ...suppliedPost, ...interactions };
+  useEffect(() => observePostInteractionQueries(queryClient), [queryClient]);
+  const [hiddenContext, setHiddenContext] = useState<unknown>(null);
+  useEffect(() => { setHiddenContext(null); }, [suppliedPost]);
   const [mediaSelection, setMediaSelection] = useState<MobileSocialMediaSelection>(null);
   useSuspendInlineVideos(mediaSelection !== null);
   const [deleting, setDeleting] = useState(false);
@@ -376,33 +384,31 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, on
   }
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { repostPending.current = false; setReposting(false); setDeleting(false); }, [interactionScope, suppliedPost.id]);
   const displayName = displayNameFor(post);
   const publicMeta = [post.username ? `@${post.username}` : null, formatDate(post.created_at)].filter(Boolean).join(' · ');
   const compact = variant === 'compact';
 
-  const refresh = () => {
-    void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
-    void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
-    void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
-    void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', post.id] });
-    void queryClient.invalidateQueries({ queryKey: ['culture', 'community-board'] });
-    onMutated?.();
-  };
-
   const act = async (action: 'like' | 'bookmark' | 'repost') => {
+    const context = actionContext.current;
+    if (!user) { Alert.alert('Sign in required', 'Sign in to like, save or repost.'); return; }
+    const operation = beginPostInteraction(interactionScope, suppliedPost, action);
+    if (!operation) return;
     impactHaptic();
-    const id = actionPostId(post);
-    const result =
-      action === 'like'
-        ? await toggleSocialLike(id)
+    try {
+      const result = action === 'like'
+        ? await toggleSocialLike(actionPostId(post), user.id, session?.access_token)
         : action === 'bookmark'
-          ? await toggleSocialBookmark(id)
-          : await toggleSocialRepost(id, user?.id);
-    if (!result.success) {
-      Alert.alert(`${action === 'bookmark' ? 'Save' : action} failed`, result.error || 'Please try again.');
-      return;
+          ? await toggleSocialBookmark(actionPostId(post), user.id, session?.access_token)
+          : await toggleSocialRepost(actionPostId(post), user.id);
+      finishPostInteraction(operation, result.success, 'liked' in result ? result.liked : 'bookmarked' in result ? result.bookmarked : 'reposted' in result ? result.reposted : undefined);
+      if (!result.success && mounted.current && actionContext.current === context && currentPostInteractionScope(interactionScope)) {
+        Alert.alert(`${action === 'bookmark' ? 'Save' : action === 'like' ? 'Like' : 'Repost'} failed`, result.error || 'Please try again.');
+      }
+    } catch {
+      finishPostInteraction(operation, false);
+      if (mounted.current && actionContext.current === context && currentPostInteractionScope(interactionScope)) Alert.alert(`${action === 'bookmark' ? 'Save' : action === 'like' ? 'Like' : 'Repost'} failed`, 'Please try again.');
     }
-    refresh();
   };
 
   const openRepost = () => {
@@ -418,7 +424,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, on
         setReposting(true);
         try { await act('repost'); }
         catch { if (current()) Alert.alert('Repost failed', 'Please try again.'); }
-        finally { repostPending.current = false; if (mounted.current) setReposting(false); }
+        finally { if (current()) { repostPending.current = false; setReposting(false); } }
       } },
       { text: 'Quote post', onPress: () => { if (current()) router.push({ pathname: '/create-post', params: { quotePostId: actionPostId(post) } } as any); } },
       { text: 'Cancel', style: 'cancel' },
@@ -427,9 +433,11 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, on
 
   const openOverflow = () => {
     selectionHaptic();
+    const context = actionContext.current;
+    const current = () => mounted.current && actionContext.current === context && currentPostInteractionScope(interactionScope);
     const ownPost = user?.id === post.user_id;
     const actions = [
-      { text: 'Quote post', onPress: () => router.push({ pathname: '/create-post', params: { quotePostId: post.id } } as any) },
+      { text: 'Quote post', onPress: () => { if (current()) router.push({ pathname: '/create-post', params: { quotePostId: actionPostId(post) } } as any); } },
       ...(ownPost ? [{
         text: deleting ? 'Deleting…' : 'Delete post',
         style: 'destructive' as const,
@@ -439,14 +447,19 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, on
             text: 'Delete',
             style: 'destructive',
             onPress: async () => {
+              if (!current()) return;
               setDeleting(true);
               const result = await deleteMobileSocialPost(post.id);
+              if (!current()) return;
               setDeleting(false);
               if (!result.success) {
                 Alert.alert('Post not deleted', result.error || 'Please try again.');
                 return;
               }
-              refresh();
+              if (!current()) return;
+              setHiddenContext(context);
+              await removePostQuerySnapshots(queryClient, interactionScope, { postId: post.id });
+              removeLoadedCommunityPosts(user?.id ?? null, session?.access_token ?? null, { postId: post.id });
               Alert.alert('Post deleted', 'Your post has been removed from Community.');
             },
           },
@@ -464,9 +477,13 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, on
         text: `Block ${displayName}`,
         style: 'destructive' as const,
         onPress: async () => {
+          if (!current()) return;
           try {
             await blockUser(post.user_id, 'Blocked from community post');
-            refresh();
+            if (!currentPostInteractionScope(interactionScope)) return;
+            setHiddenContext(context);
+            await removePostQuerySnapshots(queryClient, interactionScope, { authorId: post.user_id });
+            removeLoadedCommunityPosts(user?.id ?? null, session?.access_token ?? null, { authorId: post.user_id });
             Alert.alert('Account blocked', `${displayName}'s posts will no longer appear.`);
           } catch (error: any) {
             Alert.alert('Could not block account', error?.message ?? 'Please try again.');
@@ -477,6 +494,8 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, on
     ];
     Alert.alert(displayName, ownPost ? 'Manage your post' : undefined, actions);
   };
+
+  if (hiddenContext === actionContext.current) return null;
 
   // Web-parity feed row: full-bleed, hairline divider, X-style header line and an
   // evenly spread five-icon action row — matching the live web Community feed.
@@ -536,7 +555,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, on
               <AudioAttachment post={post} />
               <LinkPreview post={post} />
               {post.original_post ? <QuoteCard post={post.original_post} /> : null}
-              <PollCard post={post} onMutated={refresh} />
+              <PollCard post={post} onMutated={(poll, selected) => updatePollInPlace(interactionScope, suppliedPost, poll, selected)} />
             </>
           ) : null}
 
@@ -549,11 +568,11 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, on
               <MaterialIcons name="repeat" size={20} color={post.reposted ? theme.colors.accentText : theme.colors.textMuted} />
               {post.reposts_count ? <Text style={[styles.actionText, post.reposted && styles.actionOrange]}>{formatCompact(post.reposts_count)}</Text> : null}
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={post.liked ? 'Unlike' : 'Like'} style={styles.action} onPress={() => act('like')}>
+            <Pressable accessibilityRole="button" accessibilityLabel={post.liked ? 'Unlike' : 'Like'} accessibilityState={{ selected: post.liked, busy: post.likePending, disabled: post.likePending }} disabled={post.likePending} style={styles.action} onPress={() => act('like')}>
               <MaterialIcons name={post.liked ? 'favorite' : 'favorite-border'} size={20} color={post.liked ? theme.colors.live : theme.colors.textMuted} />
               {post.likes_count ? <Text style={[styles.actionText, post.liked && styles.actionLive]}>{formatCompact(post.likes_count)}</Text> : null}
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={post.bookmarked ? 'Remove saved post' : 'Save post'} style={styles.action} onPress={() => act('bookmark')}>
+            <Pressable accessibilityRole="button" accessibilityLabel={post.bookmarked ? 'Remove saved post' : 'Save post'} accessibilityState={{ selected: post.bookmarked, busy: post.bookmarkPending, disabled: post.bookmarkPending }} disabled={post.bookmarkPending} style={styles.action} onPress={() => act('bookmark')}>
               <MaterialIcons name={post.bookmarked ? 'bookmark' : 'bookmark-border'} size={20} color={post.bookmarked ? theme.colors.accentText : theme.colors.textMuted} />
               {post.bookmarks_count ? <Text style={[styles.actionText, post.bookmarked && styles.actionOrange]}>{formatCompact(post.bookmarks_count)}</Text> : null}
             </Pressable>

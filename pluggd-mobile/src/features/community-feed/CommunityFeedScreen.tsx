@@ -1,7 +1,7 @@
 import { canCollectRecommendations } from './communityRelevanceModel';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { MobileSocialPostCard } from '../culture/MobileSocialPostCard';
@@ -159,6 +159,15 @@ export function CommunityFeedScreen() {
     staleTime: 1000 * 30,
   });
 
+  const [pulling, setPulling] = useState(false);
+  const pullPending = useRef(false);
+  const pullRefresh = async () => {
+    if (pullPending.current) return;
+    pullPending.current = true; setPulling(true);
+    try { await Promise.all([query.refetch(), ...(tab === 'feed' ? [relevance.controller.refresh()] : [])]); }
+    finally { pullPending.current = false; setPulling(false); }
+  };
+
   const bundle = query.data;
   const posts = useMemo(() => filterCommunityPosts(relevance.state.posts, filter, hashtag), [relevance.state.posts, filter, hashtag]);
   const boardCategories = useMemo(() => ['All', ...Array.from(new Set(
@@ -287,7 +296,7 @@ export function CommunityFeedScreen() {
             return <BoardIndexRow board={row.board} onPress={() => navigate(row.board.route)} />;
           }}
           contentContainerStyle={{ paddingBottom: bottomInset }}
-          refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
+          refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={pulling} onRefresh={() => void pullRefresh()} />}
           ItemSeparatorComponent={() => <View style={styles.boardDivider} />}
         />
       </View>
@@ -309,7 +318,7 @@ export function CommunityFeedScreen() {
     return (
       <View style={styles.screen}>
         <DiscoveryHeader backToDiscovery compactReturn showReturnLabel={false} />
-        <ScrollView stickyHeaderIndices={[1]} contentContainerStyle={{ paddingBottom: bottomInset }} refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}>
+        <ScrollView stickyHeaderIndices={[1]} contentContainerStyle={{ paddingBottom: bottomInset }} refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={pulling} onRefresh={() => void pullRefresh()} />}>
           <View />
           {stickySwitcher}
           <View style={styles.exploreIntro}>
@@ -348,7 +357,7 @@ export function CommunityFeedScreen() {
           ListHeaderComponent={<View />}
           stickyHeaderIndices={[1]}
           contentContainerStyle={{ paddingBottom: bottomInset }}
-          refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
+          refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={pulling} onRefresh={() => void pullRefresh()} />}
           renderItem={({ item: row }) => {
             if (row.kind === 'switcher') return stickySwitcher;
             if (row.kind === 'empty') return <View style={styles.empty}><Text style={styles.emptyTitle}>No communities yet</Text><Text style={styles.emptyBody}>Open Boards or Explore to find active conversations.</Text></View>;
@@ -371,14 +380,14 @@ export function CommunityFeedScreen() {
         ListHeaderComponentStyle={styles.storiesHeader}
         stickyHeaderIndices={[1]}
         contentContainerStyle={{ paddingBottom: bottomInset, gap: 14 }}
-        refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={relevance.state.loading} onRefresh={() => { void query.refetch(); void relevance.controller.refresh(); }} />}
+        refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={pulling} onRefresh={() => void pullRefresh()} />}
         renderItem={({ item: row }) => {
           if (row.kind === 'switcher') return stickySwitcher;
           if (row.kind === 'filters') return feedFilters;
           if (row.kind === 'empty') return relevance.state.loading ? <View style={styles.center}><ActivityIndicator color={theme.colors.accentText} accessibilityLabel="Loading posts" /></View> : <View style={styles.empty}><Text style={styles.emptyTitle}>{relevance.state.error ? 'Posts could not load' : relevance.state.hasMore ? 'No matches on this page' : 'No posts yet'}</Text><Text style={styles.emptyBody}>{relevance.state.hasMore ? 'Load more or try another feed filter.' : 'Start the first conversation or try another feed filter.'}</Text></View>;
           const { post, postIndex } = row;
           return <>
-            <RecommendationPost post={post} state={relevance.state} controller={relevance.controller}><MobileSocialPostCard post={post} onMutated={() => void relevance.controller.refresh()} onRecommendationOpen={() => relevance.controller.open(post.id)} prepareRecommendationShare={() => relevance.controller.prepareShare(post.id)} onRecommendationAudio={relevance.state.mode === 'for-you' && canCollectRecommendations(relevance.state.context) && relevance.state.metadata[post.id] ? elapsed => relevance.controller.audio(post.id, elapsed) : undefined} /></RecommendationPost>
+            <RecommendationPost post={post} state={relevance.state} controller={relevance.controller}><MobileSocialPostCard post={post} onRecommendationOpen={() => relevance.controller.open(post.id)} prepareRecommendationShare={() => relevance.controller.prepareShare(post.id)} onRecommendationAudio={relevance.state.mode === 'for-you' && canCollectRecommendations(relevance.state.context) && relevance.state.metadata[post.id] ? elapsed => relevance.controller.audio(post.id, elapsed) : undefined} /></RecommendationPost>
             {postIndex === 1 && bundle ? <CommunityFeedInterstitial kind="the_plug" bundle={bundle} /> : null}
             {postIndex === 5 ? (
               <View style={styles.lowerShortcuts}>

@@ -25,7 +25,8 @@ const service = load('../src/features/community-feed/communityRelevanceService.t
   'expo-crypto': { randomUUID: () => id(++uuid) }, '../../lib/supabase': { supabase: db }, './communityRelevanceModel': model,
   '../culture/mobileSocial': { hydrateRankedMobileSocialPosts: async rows => { hydrated = rows; return rows.map(row => ({ id: row.id, user_id: row.user_id })); }, loadMobileSocialFeed: async args => { calls.push({ baseline: args.mode }); return [{ id: id(9), user_id: id(2) }]; } },
 });
-const ctrl = load('../src/features/community-feed/communityRelevanceController.ts', { './communityRelevanceModel': model, './communityRelevanceService': service });
+const interactions = load('../src/features/culture/postInteractionState.ts', {});
+const ctrl = load('../src/features/community-feed/communityRelevanceController.ts', { '../culture/postInteractionState': interactions, './communityRelevanceModel': model, './communityRelevanceService': service });
 const context = { state: 'live', use_v3: true, shadow: false, personalization_enabled: true, legacy_affinity_allowed: true, epoch: id(3), algorithm_version: 'community-v3.1' };
 const rows = [6, 4].map(n => ({ id: id(n), user_id: id(2), recommendation_request_id: id(5), recommendation_reason: 'music', algorithm_version: 'community-v3.1' }));
 const cursor = { request_id: id(5), position: 20, score: '12.12345678901234567890', created_at: '2026-10-07 10:22:00.000001+00', post_id: id(4) };

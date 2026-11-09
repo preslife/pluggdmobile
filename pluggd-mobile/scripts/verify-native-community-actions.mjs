@@ -134,14 +134,16 @@ async function cardFixture(input = post) {
  const f = { auth: { user: { id: uuid(1) } }, alerts: [], routes: [], reposts: [] };
  const native = { ...rn, Platform: { OS: 'ios' }, Alert: { alert: (...args) => f.alerts.push(args) }, Share: { share: async () => ({ action: 'dismissedAction' }) } };
  const Panel = p => React.createElement(rn.View, null, p.children);
+ const interactions = load('src/features/culture/postInteractionState.ts');
  const Component = load('src/features/culture/MobileSocialPostCard.tsx', {
+  './postInteractionState': interactions,
   ...themeMocks, react: React, 'react/jsx-runtime': require('react/jsx-runtime'), 'react-native': native, '@expo/vector-icons': { MaterialIcons: icon },
   '@tanstack/react-query': { useQueryClient: () => ({ invalidateQueries: () => {} }) }, 'expo-linear-gradient': { LinearGradient: Panel }, 'expo-router': { useRouter: () => ({ push: path => f.routes.push(path) }) },
   '../../components/PluggdImage': { PluggdImage: image, Image: { getSize: () => {} } }, '../../context/PlaybackProvider': { usePlayback: () => ({}) }, '../social-music/PostMusicAttribution': { PostMusicAttribution: () => null }, '../../design/haptics': { impactHaptic() {}, selectionHaptic() {} },
   '../../lib/mobileContent': { contentInitials: () => 'OA', formatCompact: n => String(n), formatDate: () => 'Today' }, '../../../components/liquid-glass': { GlassAvatar: Panel, GlassPanel: Panel },
   './mobileSocial': { toggleSocialRepost: async id => { f.reposts.push({ id, actor: f.auth.user?.id }); if (f.wait) await f.wait.promise; return { success: true }; }, toggleSocialLike: async () => ({ success: true }), toggleSocialBookmark: async () => ({ success: true }) },
   '../safety/accountSafety': {}, '../safety/reportActions': {}, './MobileSocialMediaViewer': { MobileSocialMediaViewer: () => null }, '../../context/AuthProvider': { useAuth: () => f.auth },
-  './MobileSocialInlineVideo': { MobileSocialInlineVideo: () => null }, './useInlineVideoVisibility': { useSuspendInlineVideos: () => {} }, '../community-feed/communityRelevanceController': { shareWithRecommendationConfirmation: async share => share() },
+  './MobileSocialInlineVideo': { MobileSocialInlineVideo: () => null }, './useInlineVideoVisibility': { useSuspendInlineVideos: () => {} }, '../community-feed/communityRelevanceController': { shareWithRecommendationConfirmation: async share => share(), removeLoadedCommunityPosts() {} },
   '../community-feed/CommunityReleasePlayer': { CommunityReleasePlayer: () => null }, '../community-feed/releasePostPlayback': { releaseIdForPost: () => null },
  }).MobileSocialPostCard;
  f.props = { post: input }; f.ui = await mount(Component, f.props); return f;
