@@ -8,6 +8,10 @@ const SENSITIVE_DATA_KEY = /authorization|cookie|email|password|secret|token/i;
  * Keep route and request-path diagnostics while removing query strings,
  * fragments, credentials, and common secret-bearing breadcrumb properties.
  */
+function redactSplitJoinToken(value: string): string {
+  return value.replace(/(\/split\/join\/|pluggd:\/\/split\/join\/)[^/?#\s]+/gi, '$1[redacted]');
+}
+
 export function sanitizeObservabilityUrl(value: string): string {
   try {
     const parsed = new URL(value);
@@ -15,9 +19,9 @@ export function sanitizeObservabilityUrl(value: string): string {
     parsed.password = '';
     parsed.search = '';
     parsed.hash = '';
-    return parsed.toString();
+    return redactSplitJoinToken(parsed.toString());
   } catch {
-    return value.split(/[?#]/, 1)[0] ?? value;
+    return redactSplitJoinToken(value.split(/[?#]/, 1)[0] ?? value);
   }
 }
 

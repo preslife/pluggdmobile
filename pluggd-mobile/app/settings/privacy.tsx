@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { LEGAL_URLS, MINIMUM_AGE } from '../../src/config/environment';
+import { RecommendationPrivacy } from '../../src/features/community-feed/communityRelevanceControls';
 import { useAuth } from '../../src/context/AuthProvider';
 import { useStoreBilling } from '../../src/context/StoreBillingProvider';
 import { pluggdFonts } from '../../src/design/typography';
@@ -100,7 +101,7 @@ export default function PrivacySettingsScreen() {
 
         <View style={styles.hero}>
           <Text style={[styles.kicker, { color: theme.colors.accent }]}>PRIVACY & SAFETY</Text>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Your music life.<Text style={styles.titleAccent}> Your terms.</Text></Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Your music life.<Text style={[styles.titleAccent, { color: theme.colors.accentText }]}> Your terms.</Text></Text>
           <Text style={[styles.intro, { color: theme.colors.textMuted }]}>Age-aware discovery, community controls and account ownership in one place.</Text>
         </View>
 
@@ -112,7 +113,7 @@ export default function PrivacySettingsScreen() {
               <View style={[styles.agePicker, { borderBottomColor: theme.colors.border }]}>
                 <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Age declaration</Text>
                 <Text style={[styles.rowDetail, { color: theme.colors.textMuted }]}>Required to apply appropriate discovery filters.</Text>
-                <View style={styles.ageChoices}>
+                <View style={styles.ageChoices} accessibilityRole="radiogroup" accessibilityLabel="Age declaration">
                   <Choice label="Under 16" selected={settings.ageBand === 'under_16'} onPress={() => setAgeBand('under_16')} colors={theme.colors} />
                   <Choice label={`${MINIMUM_AGE}+`} selected={settings.ageBand === '16_plus'} onPress={() => setAgeBand('16_plus')} colors={theme.colors} />
                   <Choice label="18+" selected={settings.ageBand === '18_plus'} onPress={() => setAgeBand('18_plus')} colors={theme.colors} />
@@ -130,6 +131,8 @@ export default function PrivacySettingsScreen() {
             </>
           )}
         </Section>
+
+        <RecommendationPrivacy />
 
         <Section title="COMMUNITY SAFETY" borderColor={theme.colors.border} subtle={theme.colors.textSubtle}>
           <ActionRow icon="block" title="Blocked accounts" detail="Review and unblock accounts" colors={theme.colors} onPress={() => router.push('/settings/blocked-accounts' as any)} />
@@ -195,7 +198,7 @@ function Section({ title, borderColor, subtle, children }: { title: string; bord
 
 type ThemeColors = ReturnType<typeof usePluggdTheme>['colors'];
 function Choice({ label, selected, onPress, colors }: { label: string; selected: boolean; onPress: () => void; colors: ThemeColors }) {
-  return <Pressable accessibilityRole="radio" accessibilityState={{ selected }} onPress={onPress} style={[styles.choice, { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? 'rgba(244,106,27,0.14)' : 'transparent' }]}><Text style={[styles.choiceText, { color: selected ? colors.accent : colors.textMuted }]}>{label}</Text></Pressable>;
+  return <Pressable accessibilityRole="radio" aria-checked={selected} accessibilityState={{ selected, checked: selected }} onPress={onPress} style={[styles.choice, { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? 'rgba(244,106,27,0.14)' : 'transparent' }]}><Text style={[styles.choiceText, { color: selected ? colors.accent : colors.textMuted }]}>{label}</Text></Pressable>;
 }
 
 function ToggleRow({ icon, title, detail, value, onValueChange, colors, disabled }: { icon: keyof typeof MaterialIcons.glyphMap; title: string; detail: string; value: boolean; onValueChange: (value: boolean) => void; colors: ThemeColors; disabled?: boolean }) {

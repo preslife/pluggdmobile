@@ -39,7 +39,8 @@ import { impactHaptic, selectionHaptic } from '../design/haptics';
 import { blockUser, loadBlockedUserIds } from '../features/safety/accountSafety';
 import { showReportActions } from '../features/safety/reportActions';
 import { useWallet } from '../hooks/useWallet';
-import { fetchLiveToken } from '../lib/live';
+import { confirmLiveStarted, fetchLiveToken, type AgoraJoinPayload } from '../lib/live';
+import { createLiveStartGate } from '../features/live/liveStartGate';
 import { supabase } from '../lib/supabase';
 import { PluggdGlassSurface } from '../../components/PluggdPrimitives';
 import { resolveCommercePolicy } from '../commerce/policy';
@@ -272,6 +273,8 @@ export default function LiveSessionScreen() {
   });
 
   const engineRef = useRef<IRtcEngine | null>(null);
+  const liveStartGateRef = useRef<ReturnType<typeof createLiveStartGate> | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const commentInputRef = useRef<TextInput>(null);
   const chatChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const roomChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -620,6 +623,8 @@ export default function LiveSessionScreen() {
       setGiftTrayOpen(false);
       setControlSheet(null);
       setStatus('ended');
+      liveStartGateRef.current?.dispose();
+      liveStartGateRef.current = null;
       engineRef.current?.leaveChannel();
       engineRef.current?.release();
       engineRef.current = null;
@@ -646,12 +651,70 @@ export default function LiveSessionScreen() {
   }, [applyRoomUpdate, currentRoomId]);
 
   const initAgora = useCallback(
-    (token: { appId: string; channelName: string; token: string; uid: number }, nextRole: StreamRole, liveMode?: string | null) => {
+    (token: AgoraJoinPayload, nextRole: StreamRole, liveMode?: string | null) => {
       const engine = createAgoraRtcEngine();
       engineRef.current = engine;
 
+      let failed = false;
+      const isCurrent = () => !failed && engineRef.current === engine && sessionRef.current?.status !== 'ended';
+      const fail = (message: string) => {
+        if (!isCurrent()) return;
+        failed = true;
+        liveStartGateRef.current?.dispose();
+        engine.leaveChannel();
+        setConnectionError(message);
+        setStatus('error');
+      };
+      const gate = createLiveStartGate({
+        needsVideo: liveMode !== 'audio_room' && token.modeConfig?.video_enabled !== false,
+        confirm: () => confirmLiveStarted(currentRoomId!, token),
+        onReady: () => { if (isCurrent()) setStatus('joined'); },
+        onError: () => fail('Your stream could not be confirmed. Try connecting again.'),
+      });
+      liveStartGateRef.current = gate;
+      const joined = () => {
+        if (!isCurrent()) return;
+        if (nextRole === 'host') gate.joined();
+        else setStatus('joined');
+      };
+      let renewing = false;
+      const renew = async () => {
+        if (renewing || !isCurrent() || !currentRoomId) return;
+        renewing = true;
+        try {
+          const refreshed = await fetchLiveToken({ roomId: currentRoomId, role: nextRole });
+          if (!isCurrent()) return;
+          if (refreshed.uid !== token.uid || refreshed.channelName !== token.channelName || refreshed.role !== nextRole) {
+            throw new Error('Live access changed');
+          }
+          const result = engine.renewToken(refreshed.token);
+          if (result < 0) throw new Error('Token renewal failed');
+        } catch {
+          fail('Your live connection expired. Try connecting again.');
+        } finally { renewing = false; }
+      };
       engine.registerEventHandler({
-        onJoinChannelSuccess: () => setStatus('joined'),
+        onJoinChannelSuccess: joined,
+        onRejoinChannelSuccess: joined,
+        onAudioPublishStateChanged: (_channel, _oldState, newState) => {
+          if (isCurrent()) gate.audioPublished(newState === 3); // Agora PubStatePublished
+        },
+        onVideoPublishStateChanged: (source, _channel, _oldState, newState) => {
+          if (isCurrent() && source === 0) gate.videoPublished(newState === 3); // Primary camera
+        },
+        onConnectionStateChanged: (_connection, state) => {
+          if (!isCurrent()) return;
+          if (state === 4) { gate.disconnected(); setStatus('connecting'); }
+          if (state === 5) fail('Your live connection was lost. Try connecting again.');
+        },
+        onLocalAudioStateChanged: (_connection, state) => {
+          if (nextRole !== 'audience' && state === 3) fail('Your microphone could not start. Check microphone access in Settings, then try again.');
+        },
+        onLocalVideoStateChanged: (source, state) => {
+          if (nextRole !== 'audience' && source === 0 && state === 3) fail('Your camera could not start. Check camera access in Settings, then try again.');
+        },
+        onTokenPrivilegeWillExpire: () => { void renew(); },
+        onRequestToken: () => { void renew(); },
         onUserJoined: (_connection, uid) => {
           setRemoteUsers((current) => [...new Set([...current, uid])]);
         },
@@ -660,7 +723,7 @@ export default function LiveSessionScreen() {
         },
         onError: (err, msg) => {
           console.warn('agora error', err, msg);
-          setStatus('error');
+          fail('Could not connect your camera or microphone. Check access and try again.');
         },
       });
 
@@ -689,15 +752,18 @@ export default function LiveSessionScreen() {
       }
       (engine as any).setEnableSpeakerphone?.(initialMediaRef.current.speakerOn);
 
-      engine.joinChannel(token.token, token.channelName, token.uid, {
+      const joinResult = engine.joinChannel(token.token, token.channelName, token.uid, {
         clientRoleType:
           nextRole === 'audience'
             ? ClientRoleType.ClientRoleAudience
             : ClientRoleType.ClientRoleBroadcaster,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        publishMicrophoneTrack: nextRole !== 'audience',
+        publishCameraTrack: nextRole !== 'audience' && liveMode !== 'audio_room',
       });
+      if (joinResult < 0) fail('Could not connect to this live. Please try again.');
     },
-    [],
+    [currentRoomId],
   );
 
   useEffect(() => {
@@ -771,6 +837,7 @@ export default function LiveSessionScreen() {
         }
 
         setStatus('loading');
+        setConnectionError(null);
         const room = await loadRoom();
         if (!room || cancelled) return;
 
@@ -822,7 +889,7 @@ export default function LiveSessionScreen() {
           if (permissions.permanentlyDenied) {
             Alert.alert(
               'Camera or microphone blocked',
-              'Enable PLUGGD camera and microphone access in Android Settings to host or join the stage.',
+              room.live_mode === 'audio_room' ? 'Enable PLUGGD microphone access in Android Settings to host or join the stage.' : 'Enable PLUGGD camera and microphone access in Android Settings to host or join the stage.',
               [
                 { text: 'Not now', style: 'cancel' },
                 { text: 'Open Settings', onPress: () => void Linking.openSettings() },
@@ -845,9 +912,10 @@ export default function LiveSessionScreen() {
 
         setTokenInfo(token);
         setStreamRole(token.role);
-        initAgora(token, token.role, room.live_mode);
+        initAgora(token, token.role, token.liveMode ?? room.live_mode);
       } catch (error: any) {
-        console.warn('Live session init failed', error);
+        if (cancelled) return;
+        setConnectionError('Could not connect to this live. Check your connection and try again.');
         setStatus('error');
       }
     };
@@ -857,6 +925,8 @@ export default function LiveSessionScreen() {
     return () => {
       cancelled = true;
       giftLoadGenerationRef.current += 1;
+      liveStartGateRef.current?.dispose();
+      liveStartGateRef.current = null;
       engineRef.current?.leaveChannel();
       engineRef.current?.release();
       engineRef.current = null;
@@ -1232,6 +1302,7 @@ export default function LiveSessionScreen() {
     selectionHaptic();
     const next = !muted;
     setMuted(next);
+    if (streamRole !== 'audience') initialMediaRef.current.microphoneEnabled = !next;
 
     const engine = engineRef.current as any;
     if (streamRole === 'audience') {
@@ -1246,6 +1317,7 @@ export default function LiveSessionScreen() {
     selectionHaptic();
     const nextMuted = !videoMuted;
     setVideoMuted(nextMuted);
+    initialMediaRef.current.cameraEnabled = !nextMuted;
     const engine = engineRef.current as any;
     if (nextMuted) {
       engine?.muteLocalVideoStream?.(true);
@@ -1408,7 +1480,7 @@ export default function LiveSessionScreen() {
     }
 
     if (isAudioRoom) {
-      return <AudioRoomStage title={session?.title ?? 'Live Room'} host={host} status={status} />;
+      return <AudioRoomStage title={session?.title ?? 'Live Room'} host={host} status={status} message={connectionError || (isHost && status === 'connecting' ? 'Turn on your microphone to start your live.' : undefined)} onRetry={() => setPermissionAttempt((attempt) => attempt + 1)} />;
     }
 
     const mainRemoteUid = remoteUsers[0];
@@ -1451,8 +1523,13 @@ export default function LiveSessionScreen() {
                   : 'Connecting live'}
         </Text>
         <Text style={styles.placeholderBody} numberOfLines={2}>
-          {session?.description || session?.title || 'The room will appear here once media is available.'}
+          {connectionError || (isHost && status === 'connecting' ? 'Your microphone and camera must be on before your live starts.' : session?.description || session?.title || 'The room will appear here once media is available.')}
         </Text>
+        {status === 'error' ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="Try connecting again" onPress={() => setPermissionAttempt((attempt) => attempt + 1)} style={styles.composerCloseButton}>
+            <MaterialIcons name="refresh" size={24} color="#FFFFFF" />
+          </Pressable>
+        ) : null}
       </View>
     );
   };
@@ -2225,7 +2302,7 @@ function RuntimeButton({
   );
 }
 
-function AudioRoomStage({ title, host, status }: { title: string; host: string; status: JoinStatus }) {
+function AudioRoomStage({ title, host, status, message, onRetry }: { title: string; host: string; status: JoinStatus; message?: string; onRetry: () => void }) {
   const theme = usePluggdTheme();
   const styles = useLiveSessionStyles();
   return (
@@ -2239,6 +2316,8 @@ function AudioRoomStage({ title, host, status }: { title: string; host: string; 
       <Text style={styles.audioSubtitle} numberOfLines={1}>
         Hosted by {host}
       </Text>
+      <Text accessibilityLiveRegion="polite" style={[styles.audioSubtitle, { textAlign: 'center', marginTop: 16 }]}>{message || (status === 'joined' ? 'Connected' : status === 'ended' ? 'This live has ended' : status === 'error' ? 'Could not join live' : status === 'waiting' ? 'Waiting for host' : 'Connecting live')}</Text>
+      {status === 'error' ? <Pressable accessibilityRole="button" accessibilityLabel="Try connecting again" onPress={onRetry} style={[styles.composerCloseButton, { marginTop: 16 }]}><MaterialIcons name="refresh" size={24} color="#FFFFFF" /></Pressable> : null}
       <View style={styles.waveform}>
         {Array.from({ length: 28 }).map((_, index) => (
           <View

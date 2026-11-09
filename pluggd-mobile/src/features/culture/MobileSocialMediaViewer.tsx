@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { musicError, musicPostId } from '../social-music/model';
 import { musicPlayback } from '../social-music/service';
+import { AudioProgressQualification } from '../community-feed/communityRelevanceModel';
 import { prepareInlineVideoMutedPlayback, setInlineVideoAutomaticAudio, setInlineVideoPrimaryAudioProtection } from './inlineVideoAudio';
 import { hydrateInlineVideoSoundPreference, setInlineVideoUserMuted, useInlineVideoSoundPreference } from './inlineVideoSoundPreference';
 
@@ -22,20 +23,24 @@ export type MobileSocialMediaSelection =
 type MobileSocialMediaViewerProps = {
   post: MobileSocialPostPreview;
   selection: MobileSocialMediaSelection;
+  onQualifiedListening?: (elapsedMs: number) => void;
   onSelectionChange: (selection: MobileSocialMediaSelection) => void;
 };
 
-function FullScreenVideo({ uri }: { uri: string }) {
+function FullScreenVideo({ uri, onQualifiedListening }: { uri: string; onQualifiedListening?: (elapsedMs: number) => void }) {
   const { user, session } = useAuth();
   const context = useRef({ actor: user?.id, token: session?.access_token, revision: 0 });
   if (context.current.actor !== user?.id || context.current.token !== session?.access_token) {
     context.current = { actor: user?.id, token: session?.access_token, revision: context.current.revision + 1 };
   }
   // A session change releases the old native player and its private signed URL.
-  return <SessionVideo key={context.current.revision} uri={uri} />;
+  return <SessionVideo key={context.current.revision} uri={uri} onQualifiedListening={onQualifiedListening} />;
 }
 
-function SessionVideo({ uri }: { uri: string }) {
+function SessionVideo({ uri, onQualifiedListening }: { uri: string; onQualifiedListening?: (elapsedMs: number) => void }) {
+  const listening = useRef(onQualifiedListening);
+  listening.current = onQualifiedListening;
+  const qualification = useRef(new AudioProgressQualification());
   const { pause, isPlaying, isBuffering } = usePlayback();
   const musicActive = isPlaying || isBuffering;
   const primaryAudio = useRef(musicActive);
@@ -52,10 +57,15 @@ function SessionVideo({ uri }: { uri: string }) {
   const replacement = useRef<Promise<void>>(Promise.resolve());
   const player = useVideoPlayer(null, (instance) => {
     instance.muted = true;
+    instance.timeUpdateEventInterval = onQualifiedListening ? 1 : 0;
     instance.loop = false;
     instance.staysActiveInBackground = false;
     instance.audioMixingMode = 'mixWithOthers';
   });
+  useEffect(() => {
+    player.timeUpdateEventInterval = onQualifiedListening ? 1 : 0;
+    qualification.current.reset();
+  }, [player, onQualifiedListening]);
   useEffect(() => {
     let current = true;
     const request = ++quietRequest.current;
@@ -86,7 +96,7 @@ function SessionVideo({ uri }: { uri: string }) {
       replacement.current = work;
       return work;
     };
-    const invalidate = () => { generation++; quietRequest.current++; controller?.abort(); sourceReady = false; };
+    const invalidate = () => { qualification.current.reset(); generation++; quietRequest.current++; controller?.abort(); sourceReady = false; };
     const load = () => {
       invalidate();
       const request = generation;
@@ -118,6 +128,11 @@ function SessionVideo({ uri }: { uri: string }) {
     };
     if (foreground) load();
     const playing = player.addListener('playingChange', event => { if (event.isPlaying && !player.muted) void pause(); });
+    const progress = player.addListener('timeUpdate', event => {
+      if (!active || !foreground || !sourceReady || !listening.current) return;
+      const elapsed = qualification.current.sample(uri, event.currentTime, player.playing, player.muted ? 0 : player.volume, true);
+      if (elapsed >= 10_000) listening.current(elapsed);
+    });
     const muted = player.addListener('mutedChange', event => {
       if (!active || !foreground || !sourceReady) return;
       setMutedSnapshot(event.muted); setQuietReadyGeneration(null);
@@ -146,7 +161,7 @@ function SessionVideo({ uri }: { uri: string }) {
       } else if (active) load();
     });
     // The hook stops/releases its native player on unmount; it may already be released here.
-    return () => { active = false; invalidate(); playing.remove(); muted.remove(); status.remove(); background.remove(); };
+    return () => { active = false; invalidate(); playing.remove(); progress.remove(); muted.remove(); status.remove(); background.remove(); };
   }, [uri, retry, player, pause]);
   if (error) return <View style={[styles.media, { alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }]}>
     <Text accessibilityRole="alert" style={{ color: '#FFFFFF', textAlign: 'center' }}>{error}</Text>
@@ -160,6 +175,7 @@ export function MobileSocialMediaViewer({
   post,
   selection,
   onSelectionChange,
+  onQualifiedListening,
 }: MobileSocialMediaViewerProps) {
   const { user } = useAuth();
   const actor = useRef(user?.id);
@@ -312,7 +328,7 @@ export function MobileSocialMediaViewer({
                 />
               </ScrollView>
             ) : null}
-            {isVideo && post.video ? <FullScreenVideo uri={post.video} /> : null}
+            {isVideo && post.video ? <FullScreenVideo uri={post.video} onQualifiedListening={onQualifiedListening} /> : null}
 
             {activeImage && images.length > 1 ? (
               <>

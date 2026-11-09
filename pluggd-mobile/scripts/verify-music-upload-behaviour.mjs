@@ -140,6 +140,7 @@ function musicService(scenario) {
       assert.equal(next.foreground, true);
       return uploader.uploadFileToSupabaseStorage(next);
     } },
+    '../playback/releaseAgeAccess': loadSource('../src/features/playback/releaseAgeAccess.ts', { 'expo-crypto': {}, '../../lib/supabase': { supabase } }),
     './model': loadSource('../src/features/social-music/model.ts', {}),
   }, {
     fetch: async url => {

@@ -227,6 +227,8 @@ export function useUniversalSearch(term: string) {
           (supabase as any)
             .from('mixes')
             .select('id,slug,title,description,cover_url,audio_url,duration_seconds,city,genre_tags,mood_tags,recording_type,event_name,like_count,repost_count,save_count,play_count,published_at,created_at')
+            .eq('status', 'published')
+            .eq('visibility', 'public')
             .or(`title.ilike.${pattern},city.ilike.${pattern},event_name.ilike.${pattern}`)
             .limit(12),
         ),

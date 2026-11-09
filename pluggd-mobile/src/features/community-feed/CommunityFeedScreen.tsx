@@ -1,3 +1,4 @@
+import { canCollectRecommendations } from './communityRelevanceModel';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
@@ -18,6 +19,9 @@ import type { BackstageBoard, MobileSocialPost } from '../culture/mobileTypes';
 import type { ParityCard } from '../parity/appWideParityServices';
 import { selectionHaptic } from '../../design/haptics';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
+import { useAuth } from '../../context/AuthProvider';
+import { useNativeRelevance } from './useNativeRelevance';
+import { recommendationTabProps, RecommendationModes, RecommendationMore, RecommendationPost, RecommendationStatus } from './communityRelevanceControls';
 
 const COLORS = {
   canvas: '#0a0806',
@@ -145,16 +149,18 @@ export function CommunityFeedScreen() {
     if (next !== boardCategory) selectionHaptic();
     setBoardCategory(next);
   };
+  const { user } = useAuth();
+  const relevance = useNativeRelevance('latest', tab === 'feed');
   const hashtag = typeof params.hashtag === 'string' ? params.hashtag.replace(/^#/, '') : null;
 
   const query = useQuery({
-    queryKey: ['community-feed', 'bundle'],
-    queryFn: loadCommunityFeedBundle,
+    queryKey: ['community-feed', 'bundle', user?.id ?? 'guest'],
+    queryFn: () => loadCommunityFeedBundle(false),
     staleTime: 1000 * 30,
   });
 
   const bundle = query.data;
-  const posts = useMemo(() => filterCommunityPosts(bundle?.posts ?? [], filter, hashtag), [bundle?.posts, filter, hashtag]);
+  const posts = useMemo(() => filterCommunityPosts(relevance.state.posts, filter, hashtag), [relevance.state.posts, filter, hashtag]);
   const boardCategories = useMemo(() => ['All', ...Array.from(new Set(
     (bundle?.boards ?? []).map((board) => board.category?.trim()).filter(Boolean) as string[],
   )).sort((left, right) => left.localeCompare(right))], [bundle?.boards]);
@@ -195,10 +201,12 @@ export function CommunityFeedScreen() {
 
   const feedFilters = (
     <View style={styles.feedLead}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
-        {FEED_FILTERS.map((item) => {
+      <RecommendationModes state={relevance.state} onChange={relevance.selectMode} signedIn={!!user} />
+      <RecommendationStatus state={relevance.state} controller={relevance.controller} />
+      <ScrollView horizontal accessibilityRole="tablist" accessibilityLabel="Post filters" showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+        {FEED_FILTERS.map((item, index) => {
           const active = item.key === filter;
-          return <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: active }} style={[styles.filterTab, active && styles.filterTabActive]} onPress={() => chooseFilter(item.key)}><Text style={[styles.filterText, active && styles.filterTextActive]}>{item.label}</Text></Pressable>;
+          return <Pressable key={item.key} {...recommendationTabProps(active, index, FEED_FILTERS.map(value => value.key), chooseFilter)} accessibilityRole="tab" accessibilityState={{ selected: active }} style={[styles.filterTab, active && styles.filterTabActive]} onPress={() => chooseFilter(item.key)}><Text style={[styles.filterText, active && styles.filterTextActive]}>{item.key === 'all' ? 'All posts' : item.label}</Text></Pressable>;
         })}
       </ScrollView>
     </View>
@@ -359,17 +367,18 @@ export function CommunityFeedScreen() {
         data={feedRows}
         keyExtractor={(row) => row.id}
         ListHeaderComponent={<MobileStoriesRail title="Scene stories" compact />}
+        ListFooterComponent={<RecommendationMore state={relevance.state} controller={relevance.controller} />}
         ListHeaderComponentStyle={styles.storiesHeader}
         stickyHeaderIndices={[1]}
         contentContainerStyle={{ paddingBottom: bottomInset, gap: 14 }}
-        refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={query.isFetching} onRefresh={() => void query.refetch()} />}
+        refreshControl={<RefreshControl tintColor={theme.colors.accentText} refreshing={relevance.state.loading} onRefresh={() => { void query.refetch(); void relevance.controller.refresh(); }} />}
         renderItem={({ item: row }) => {
           if (row.kind === 'switcher') return stickySwitcher;
           if (row.kind === 'filters') return feedFilters;
-          if (row.kind === 'empty') return <View style={styles.empty}><Text style={styles.emptyTitle}>No posts yet</Text><Text style={styles.emptyBody}>Start the first conversation or try another feed filter.</Text></View>;
+          if (row.kind === 'empty') return relevance.state.loading ? <View style={styles.center}><ActivityIndicator color={theme.colors.accentText} accessibilityLabel="Loading posts" /></View> : <View style={styles.empty}><Text style={styles.emptyTitle}>{relevance.state.error ? 'Posts could not load' : relevance.state.hasMore ? 'No matches on this page' : 'No posts yet'}</Text><Text style={styles.emptyBody}>{relevance.state.hasMore ? 'Load more or try another feed filter.' : 'Start the first conversation or try another feed filter.'}</Text></View>;
           const { post, postIndex } = row;
           return <>
-            <MobileSocialPostCard post={post} onMutated={() => void query.refetch()} />
+            <RecommendationPost post={post} state={relevance.state} controller={relevance.controller}><MobileSocialPostCard post={post} onMutated={() => void relevance.controller.refresh()} onRecommendationOpen={() => relevance.controller.open(post.id)} prepareRecommendationShare={() => relevance.controller.prepareShare(post.id)} onRecommendationAudio={relevance.state.mode === 'for-you' && canCollectRecommendations(relevance.state.context) && relevance.state.metadata[post.id] ? elapsed => relevance.controller.audio(post.id, elapsed) : undefined} /></RecommendationPost>
             {postIndex === 1 && bundle ? <CommunityFeedInterstitial kind="the_plug" bundle={bundle} /> : null}
             {postIndex === 5 ? (
               <View style={styles.lowerShortcuts}>

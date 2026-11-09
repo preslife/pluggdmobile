@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { creatorPlanAllows, requireCreatorPlanFeature } from '../../lib/creatorPlanAccess';
 
 export type StudioAnalyticsRange = 7 | 30 | 90;
 
@@ -11,6 +12,7 @@ export type StudioAnalyticsPoint = {
 };
 
 export type StudioAnalyticsOverview = {
+  audienceAccess: boolean;
   range: StudioAnalyticsRange;
   points: StudioAnalyticsPoint[];
   summary: {
@@ -104,6 +106,8 @@ function topRegions(value: unknown) {
 
 export async function loadStudioAnalytics(range: StudioAnalyticsRange): Promise<StudioAnalyticsOverview> {
   const user = await currentUser();
+  await requireCreatorPlanFeature(user.id, 'analytics_dashboard');
+  const audienceAccess = await creatorPlanAllows(user.id, 'full_analytics');
   const db = supabase as any;
   const dates = dateSequence(range);
   const startDate = dates[0];
@@ -111,12 +115,30 @@ export async function loadStudioAnalytics(range: StudioAnalyticsRange): Promise<
 
   const metricsResult = await db
     .from('creator_metrics')
-    .select('metric_date,sales_revenue_cents,battle_revenue_cents,event_revenue_cents,revenue_cents,subs_active,post_likes,post_comments,plays_count,audience_geo,retention_30d,new_fans_30d,churn_30d')
+    .select(audienceAccess
+      ? 'metric_date,sales_revenue_cents,battle_revenue_cents,event_revenue_cents,revenue_cents,subs_active,post_likes,post_comments,plays_count,audience_geo,retention_30d,new_fans_30d,churn_30d'
+      : 'metric_date,sales_revenue_cents,battle_revenue_cents,event_revenue_cents,revenue_cents,plays_count')
     .eq('creator_id', user.id)
     .gte('metric_date', startDate)
     .order('metric_date', { ascending: true });
   if (metricsResult.error) throw metricsResult.error;
   const metrics = (metricsResult.data || []) as MetricRow[];
+
+  if (!audienceAccess) {
+    const points = dates.map((date) => {
+      const rows = metrics.filter((row) => row.metric_date === date);
+      return { date, plays: rows.reduce((sum, row) => sum + count(row.plays_count), 0), revenueCents: rows.reduce((sum, row) => sum + revenueFor(row), 0), engagement: 0, newFollowers: 0 };
+    });
+    return {
+      audienceAccess: false,
+      range,
+      points,
+      summary: { plays: points.reduce((sum, point) => sum + point.plays, 0), revenueCents: points.reduce((sum, point) => sum + point.revenueCents, 0), engagement: 0, activeMembers: 0, totalFollowers: 0, newFollowers: 0, trackedSaves: 0, cardViews: 0 },
+      audience: { retention30d: null, newFans30d: null, churn30d: null, topRegions: [] },
+      coverageNotes: [],
+      hasMetrics: metrics.length > 0,
+    };
+  }
 
   const [newFollowers, followerCountResult, cardViews, releases, beats, mixes, soundboards, videos] = await Promise.all([
     optionalRows<{ created_at: string }>('New follower history', db.from('user_follows').select('created_at').eq('following_id', user.id).gte('created_at', startTimestamp).order('created_at', { ascending: true }).limit(5000)),
@@ -158,6 +180,7 @@ export async function loadStudioAnalytics(range: StudioAnalyticsRange): Promise<
   if (followerCountResult.error) coverageNotes.push('Total follower count is temporarily unavailable.');
 
   return {
+    audienceAccess,
     range,
     points,
     summary: {

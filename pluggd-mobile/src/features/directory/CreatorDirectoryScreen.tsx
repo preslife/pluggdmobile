@@ -107,7 +107,7 @@ function CreatorGalleryCard({
           <Text style={[styles.galleryName, { color: theme.colors.text }]} numberOfLines={2}>{creator.displayName}</Text>
           {creator.username ? <Text style={[styles.galleryHandle, { color: theme.colors.textSecondary }]} numberOfLines={1}>@{creator.username}</Text> : null}
           <Text style={[styles.galleryRole, { color: theme.colors.accent }]} numberOfLines={1}>
-            {[creator.role, creator.genre].filter(Boolean).join(' · ')}
+            {[creator.isPro ? 'Pro' : null, creator.role, creator.genre].filter(Boolean).join(' · ')}
           </Text>
           {creator.bio ? <Text style={[styles.galleryBio, { color: theme.colors.textMuted }]} numberOfLines={2}>{creator.bio}</Text> : <View style={styles.galleryBioSpacer} />}
           <View style={styles.galleryMetaRow}>
@@ -154,7 +154,7 @@ function FeaturedCreatorCard({ creator, width, onOpen }: { creator: CreatorDirec
       )}
       <LinearGradient colors={['rgba(8,7,6,0.05)', 'rgba(8,7,6,0.94)']} style={StyleSheet.absoluteFillObject} />
       <View style={styles.featuredCreatorCopy}>
-        <Text style={styles.featuredCreatorKicker}>{creator.verified ? 'VERIFIED CREATOR' : creator.role.toUpperCase()}</Text>
+        <Text style={styles.featuredCreatorKicker}>{creator.isPro ? 'PRO CREATOR' : creator.verified ? 'VERIFIED CREATOR' : creator.role.toUpperCase()}</Text>
         <Text style={styles.featuredCreatorName} numberOfLines={2}>{creator.displayName}</Text>
         <Text style={styles.featuredCreatorMeta} numberOfLines={1}>
           {[creator.username ? `@${creator.username}` : null, creator.genre, creator.city].filter(Boolean).join(' · ')}

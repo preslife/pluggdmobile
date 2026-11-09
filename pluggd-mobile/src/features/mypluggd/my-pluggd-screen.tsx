@@ -1,3 +1,6 @@
+import { canCollectRecommendations } from '../community-feed/communityRelevanceModel';
+import { useNativeRelevance } from '../community-feed/useNativeRelevance';
+import { RecommendationModes, RecommendationMore, RecommendationPost, RecommendationStatus } from '../community-feed/communityRelevanceControls';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Stack, useRouter } from 'expo-router';
@@ -37,7 +40,7 @@ import {
   loadMobileNotifications,
   loadRecentlyPlayedLibraryItems,
 } from '../culture/mobileServices';
-import { loadCommunityBoards, loadMobileSocialFeed, type MobileSocialFeedMode } from '../culture/mobileSocial';
+import { loadCommunityBoards } from '../culture/mobileSocial';
 import { useBackstage } from '../culture/useCultureData';
 import type { BackstageThread, FanMapPlug, MobileNotification, SavedContentItem } from '../culture/mobileTypes';
 
@@ -51,10 +54,7 @@ const MYPLUGGD_TABS: Array<{ key: MyPluggdTab; label: string }> = [
   { key: 'activity', label: 'Activity' },
 ];
 
-const FEED_SWITCH: Array<{ key: MobileSocialFeedMode; label: string }> = [
-  { key: 'for-you', label: 'For You' },
-  { key: 'following', label: 'Following' },
-];
+
 
 const ACTIVITY_FILTERS: ActivityFilter[] = ['All', 'Mentions', 'Replies', 'Follows', 'Communities', 'Events', 'Rewards'];
 
@@ -157,7 +157,7 @@ export function MyPluggdScreen() {
   const theme = usePluggdTheme();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<MyPluggdTab>('feed');
-  const [feedMode, setFeedMode] = useState<MobileSocialFeedMode>('for-you');
+  const relevance = useNativeRelevance('for-you', activeTab === 'feed');
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('All');
   const [fanMapOpen, setFanMapOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -175,12 +175,7 @@ export function MyPluggdScreen() {
     },
     staleTime: 1000 * 60 * 5,
   });
-  const feed = useQuery({
-    queryKey: ['my-pluggd', 'feed', feedMode],
-    queryFn: () => loadMobileSocialFeed({ mode: feedMode, limit: 30 }),
-    enabled: Boolean(user?.id),
-    staleTime: 1000 * 35,
-  });
+
   const backstage = useBackstage();
   const boards = useQuery({
     queryKey: ['my-pluggd', 'boards'],
@@ -255,7 +250,7 @@ export function MyPluggdScreen() {
     try {
       await Promise.all([
         profile.refetch(),
-        feed.refetch(),
+        relevance.controller.refresh(),
         backstage.refetch(),
         boards.refetch(),
         library.refetch(),
@@ -337,18 +332,22 @@ export function MyPluggdScreen() {
               onMusic={() => go(user ? '/create-post?type=post&media=audio' : '/auth/login')}
               onThread={() => go(user ? '/create-post?type=discussion' : '/auth/login')}
             />
-            <FeedSwitch active={feedMode} onChange={setFeedMode} />
+            <RecommendationModes state={relevance.state} onChange={relevance.selectMode} signedIn={!!user} />
+            <RecommendationStatus state={relevance.state} controller={relevance.controller} />
             {!user ? (
               <BuildFeedPanel onFind={() => go('/search')} onCircles={() => setActiveTab('circles')} />
-            ) : feed.isLoading ? (
+            ) : relevance.state.loading ? (
               <LoadingRows />
-            ) : feed.data?.length ? (
-              feed.data.map((post) => (
-                <MobileSocialPostCard key={post.id} post={post} variant="timeline" onMutated={() => void feed.refetch()} />
+            ) : relevance.state.posts.length ? (
+              relevance.state.posts.map((post) => (
+                <RecommendationPost key={post.id} post={post} state={relevance.state} controller={relevance.controller}><MobileSocialPostCard post={post} variant="timeline" onMutated={() => void relevance.controller.refresh()} onRecommendationOpen={() => relevance.controller.open(post.id)} prepareRecommendationShare={() => relevance.controller.prepareShare(post.id)} onRecommendationAudio={relevance.state.mode === 'for-you' && canCollectRecommendations(relevance.state.context) && relevance.state.metadata[post.id] ? elapsed => relevance.controller.audio(post.id, elapsed) : undefined} /></RecommendationPost>
               ))
+            ) : relevance.state.hasMore ? (
+              <EmptyPanel title="No matches on this page" body="Load more to see current recommendations." />
             ) : (
               <BuildFeedPanel onFind={() => go('/search')} onCircles={() => setActiveTab('circles')} />
             )}
+            <RecommendationMore state={relevance.state} controller={relevance.controller} />
           </View>
         ) : null}
 
@@ -425,45 +424,6 @@ export function MyPluggdScreen() {
         }}
       />
     </PremiumScreenBackdrop>
-  );
-}
-
-function FeedSwitch({ active, onChange }: { active: MobileSocialFeedMode; onChange: (mode: MobileSocialFeedMode) => void }) {
-  const theme = usePluggdTheme();
-  return (
-    <View style={[styles.feedSwitch, { backgroundColor: theme.colors.surface, borderColor: theme.colors.controlBorder }]}>
-      {FEED_SWITCH.map((mode) => {
-        const selected = active === mode.key;
-        return (
-          <Pressable
-            key={mode.key}
-            accessibilityRole="tab"
-            accessibilityLabel={`${mode.label} feed`}
-            accessibilityState={{ selected }}
-            style={[
-              styles.feedSwitchButton,
-              {
-                backgroundColor: selected ? theme.colors.accentSoft : 'transparent',
-                borderColor: selected ? theme.colors.accent : 'transparent',
-              },
-            ]}
-            onPress={() => {
-              selectionHaptic();
-              onChange(mode.key);
-            }}
-          >
-            <Text
-              style={[
-                styles.feedSwitchLabel,
-                { color: selected ? theme.colors.accentText : theme.colors.textMuted },
-              ]}
-            >
-              {mode.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 }
 

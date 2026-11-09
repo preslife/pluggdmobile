@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
+import { randomUUID } from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,6 +31,9 @@ import { selectionHaptic } from '../../src/design/haptics';
 import type { PluggdTheme } from '../../src/design/tokens';
 import { pluggdFonts } from '../../src/design/typography';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { mixAccessSession, type MixAccessScope } from '../../src/features/playback/mixAccessSession';
+import { useMixSessionIdentity } from '../../src/features/playback/useNativeMixDetail';
+import { nativeMixRevision, NativeMixRevisionError } from '../../src/features/studio/nativeMixRevision';
 import {
   createCreatorStudioDraft,
   type CreatorUploadStage,
@@ -52,6 +56,8 @@ type DraftAsset = {
 };
 
 type UploadDraft = {
+  plannedMixId?: string;
+  completedMixId?: string;
   kind: UploadKind;
   title: string;
   creator: string;
@@ -120,7 +126,7 @@ const KINDS: Array<{ id: UploadKind; label: string; icon: keyof typeof MaterialI
 const UPLOAD_STAGE_COPY: Record<CreatorUploadStage, string> = {
   artwork: 'Uploading artwork…',
   audio: 'Uploading audio…',
-  draft: 'Creating your private Studio draft…',
+  draft: 'Saving your Studio draft…',
   processing: 'Starting audio processing…',
 };
 const AI_DECLARATION_OPTIONS: Array<{ id: Exclude<AiUseDeclaration, ''>; label: string; description: string }> = [
@@ -165,6 +171,7 @@ function normalizedStep(value: string | string[] | undefined): UploadStep {
 
 function emptyDraft(kind: UploadKind): UploadDraft {
   return {
+    ...(kind==='mix'?{plannedMixId:randomUUID()}:{}),
     kind,
     title: '',
     creator: '',
@@ -225,8 +232,9 @@ function displayDate(value: string) {
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
 }
 
-function draftKey(kind: UploadKind) {
-  return `pluggd:studio-upload-draft:${kind}`;
+function draftKey(kind: UploadKind,actorId:string|null) {
+  if(!actorId)throw new Error('Sign in before saving an upload draft.');
+  return `pluggd:studio-upload-draft:v2:${actorId}:${kind}`;
 }
 
 function formatSize(bytes?: number | null) {
@@ -245,7 +253,7 @@ function safeDraftFileName(name: string) {
   return sanitized || 'audio-upload';
 }
 
-async function persistPickedAudio(asset: DocumentPicker.DocumentPickerAsset): Promise<DraftAsset> {
+async function persistPickedAudio(asset: {name:string;uri:string;size?:number|null;mimeType?:string|null}): Promise<DraftAsset> {
   if (!FileSystem.documentDirectory) {
     throw new Error('Persistent document storage is unavailable.');
   }
@@ -253,7 +261,7 @@ async function persistPickedAudio(asset: DocumentPicker.DocumentPickerAsset): Pr
   const directoryUri = `${FileSystem.documentDirectory}${AUDIO_DRAFT_DIRECTORY}`;
   await FileSystem.makeDirectoryAsync(directoryUri, { intermediates: true });
 
-  const destinationUri = `${directoryUri}${Date.now()}-${safeDraftFileName(asset.name)}`;
+  const destinationUri = `${directoryUri}${randomUUID()}-${safeDraftFileName(asset.name)}`;
   await FileSystem.copyAsync({ from: asset.uri, to: destinationUri });
 
   return {
@@ -338,6 +346,17 @@ function useUploadThemeStyles() {
 }
 
 export default function CreatorUpload() {
+  const params=useLocalSearchParams<{type?:string|string[];preview?:string|string[]}>();
+  const identity=useMixSessionIdentity();
+  const scope=identity.ready?mixAccessSession.scope():null;
+  const previewMode=__DEV__&&scalarParam(params.preview)==='creator';
+  return <UploadAccessBoundary preview={previewMode}>
+    {scope||previewMode ? <CreatorUploadContent key={`${identity.key}|${normalizedKind(params.type)}`} actorId={scope?.actor??null} scope={scope}/>
+      : <ActivityIndicator accessibilityLabel="Opening upload workspace"/>}
+  </UploadAccessBoundary>;
+}
+
+function CreatorUploadContent({actorId,scope}:{actorId:string|null;scope:MixAccessScope|null}) {
   const router = useRouter();
   const { theme, styles } = useUploadThemeStyles();
   const params = useLocalSearchParams<{
@@ -354,12 +373,20 @@ export default function CreatorUpload() {
   const [draft, setDraft] = useState<UploadDraft>(() => emptyDraft(initialKind));
   const [step, setStep] = useState<UploadStep>('details');
   const [restoring, setRestoring] = useState(true);
+  const [restoreError,setRestoreError]=useState(false);
+  const [restoreAttempt,setRestoreAttempt]=useState(0);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [uploadStage, setUploadStage] = useState<CreatorUploadStage | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const contentScrollRef = useRef<ScrollView>(null);
+  const mounted=useRef(true);
+  const busy=useRef(false);
+  const [pendingMixSave,setPendingMixSave]=useState(false);
+  const isCurrent=()=>mounted.current&&(previewMode||Boolean(scope&&scope.actor===actorId&&mixAccessSession.current(scope)));
+  const assertCurrent=()=>{if(!isCurrent())throw new NativeMixRevisionError('changed');};
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
 
   useEffect(() => {
     let active = true;
@@ -384,9 +411,10 @@ export default function CreatorUpload() {
       };
     }
     setRestoring(true);
-    AsyncStorage.getItem(draftKey(initialKind))
+    setRestoreError(false);
+    AsyncStorage.getItem(draftKey(initialKind,actorId))
       .then((stored) => {
-        if (!active) return;
+        if (!active||!isCurrent()) return;
         if (!stored) {
           setDraft(emptyDraft(initialKind));
           return;
@@ -395,15 +423,24 @@ export default function CreatorUpload() {
         setDraft({ ...emptyDraft(initialKind), ...parsed, kind: initialKind });
       })
       .catch(() => {
-        if (active) setDraft(emptyDraft(initialKind));
+        if (active&&isCurrent()) setRestoreError(true);
       })
       .finally(() => {
-        if (active) setRestoring(false);
+        if (active&&isCurrent()) setRestoring(false);
       });
     return () => {
       active = false;
     };
-  }, [initialKind, previewAi, previewMode, previewStep]);
+  }, [initialKind, previewAi, previewMode, previewStep,actorId,restoreAttempt]);
+
+  useEffect(()=>{
+    let active=true;
+    if(previewMode||draft.kind!=='mix'||!draft.plannedMixId||!actorId||!scope)return;
+    nativeMixRevision.hasPending({actorId,scope,mixId:draft.plannedMixId,assertCurrent})
+      .then(pending=>{if(active&&isCurrent())setPendingMixSave(pending);})
+      .catch(()=>{ /* Creating checks the receipt again and reports any storage failure. */ });
+    return()=>{active=false;};
+  },[actorId,draft.kind,draft.plannedMixId,previewMode,scope]);
 
   const activeIndex = STEPS.findIndex((item) => item.id === step);
   const progress = useMemo(() => completedCount(draft), [draft]);
@@ -413,6 +450,7 @@ export default function CreatorUpload() {
   }, [draft.kind, step]);
 
   const update = <K extends keyof UploadDraft>(key: K, value: UploadDraft[K]) => {
+    if(!isCurrent()||busy.current||pendingMixSave||draft.completedMixId)return;
     setDraft((current) => ({ ...current, [key]: value }));
   };
 
@@ -457,66 +495,54 @@ export default function CreatorUpload() {
   };
 
   const switchKind = async (kind: UploadKind) => {
-    if (kind === draft.kind) return;
+    if (kind === draft.kind||busy.current) return;
     selectionHaptic();
-    const stored = previewMode ? null : await AsyncStorage.getItem(draftKey(kind)).catch(() => null);
-    setDraft(stored ? { ...emptyDraft(kind), ...(JSON.parse(stored) as UploadDraft), kind } : emptyDraft(kind));
-    setStep('details');
-    router.setParams({ type: kind });
+    try {
+      if(!previewMode)await AsyncStorage.setItem(draftKey(draft.kind,actorId),JSON.stringify(draft));
+      assertCurrent();router.setParams({type:kind});
+    } catch {if(isCurrent())Alert.alert('Draft not saved','Save your draft before changing upload type.');}
   };
 
   const chooseArtwork = async () => {
-    if (previewMode) return;
+    if (previewMode||busy.current||pendingMixSave||draft.completedMixId) return;
     selectionHaptic();
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Photo access needed', 'Allow photo access to choose release artwork.');
-      return;
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if(!isCurrent())return;
+      if (!permission.granted) {
+        Alert.alert('Photo access needed', 'Allow photo access to choose artwork.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({mediaTypes:['images'],allowsEditing:true,aspect:[1,1],quality:0.9});
+      if (!isCurrent()||result.canceled || !result.assets[0]) return;
+      const asset = result.assets[0];
+      update('artwork',await persistPickedAudio({name:asset.fileName||`${draft.kind}-artwork.jpg`,uri:asset.uri,size:asset.fileSize,mimeType:asset.mimeType}));
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.9,
-    });
-    if (result.canceled || !result.assets[0]) return;
-    const asset = result.assets[0];
-    update('artwork', {
-      name: asset.fileName || `${draft.kind}-artwork.jpg`,
-      uri: asset.uri,
-      size: asset.fileSize,
-      mimeType: asset.mimeType,
-    });
+    catch {if(isCurrent())Alert.alert('Artwork not saved','Choose the image again to keep a copy with your draft.');}
   };
 
   const chooseAudio = async () => {
-    if (previewMode) return;
+    if (previewMode||busy.current||pendingMixSave||draft.completedMixId) return;
     selectionHaptic();
-    const result = await DocumentPicker.getDocumentAsync({
-      type: 'audio/*',
-      // Android SAF grants can be temporary. First copy the provider URI into
-      // app cache, then copy it below into durable app-owned document storage.
-      copyToCacheDirectory: true,
-      multiple: false,
-    });
-    if (result.canceled || !result.assets[0]) return;
     try {
+      // Copy the provider URI into cache, then into durable document storage.
+      const result = await DocumentPicker.getDocumentAsync({type:'audio/*',copyToCacheDirectory:true,multiple:false});
+      if (!isCurrent()||result.canceled || !result.assets[0]) return;
       update('audio', await persistPickedAudio(result.assets[0]));
-    } catch (error) {
-      console.warn('Audio draft copy failed', error);
-      Alert.alert('Audio not saved', 'PLUGGD could not make a durable copy of that audio file. Choose it again.');
+    } catch {
+      if(isCurrent())Alert.alert('Audio not saved', 'PLUGGD could not make a durable copy of that audio file. Choose it again.');
     }
   };
 
   const chooseSupplementaryAudio = async (target: 'stems' | 'taggedPreview') => {
-    if (previewMode) return;
+    if (previewMode||busy.current) return;
     selectionHaptic();
     const result = await DocumentPicker.getDocumentAsync({
       type: target === 'stems' ? ['audio/*', 'application/zip', 'application/x-zip-compressed'] : 'audio/*',
       copyToCacheDirectory: true,
       multiple: false,
     });
-    if (result.canceled || !result.assets[0]) return;
+    if (!isCurrent()||result.canceled || !result.assets[0]) return;
     try {
       update(target, await persistPickedAudio(result.assets[0]));
     } catch {
@@ -525,9 +551,9 @@ export default function CreatorUpload() {
   };
 
   const chooseAdditionalTrackAudio = async (trackId: string) => {
-    if (previewMode) return;
+    if (previewMode||busy.current) return;
     const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true, multiple: false });
-    if (result.canceled || !result.assets[0]) return;
+    if (!isCurrent()||result.canceled || !result.assets[0]) return;
     try {
       const audio = await persistPickedAudio(result.assets[0]);
       update('additionalTracks', draft.additionalTracks.map((track) => track.id === trackId ? { ...track, audio } : track));
@@ -543,51 +569,80 @@ export default function CreatorUpload() {
   };
 
   const saveDraft = async () => {
-    if (previewMode) return;
+    if (previewMode||busy.current) return;
+    busy.current=true;
     setSaving(true);
     try {
       const next = { ...draft, updatedAt: new Date().toISOString() };
-      await AsyncStorage.setItem(draftKey(draft.kind), JSON.stringify(next));
+      await AsyncStorage.setItem(draftKey(draft.kind,actorId), JSON.stringify(next));assertCurrent();
       setDraft(next);
       selectionHaptic();
       Alert.alert('Draft saved', 'Your draft is safe on this device. You can return and continue at any time.');
     } catch {
-      Alert.alert('Draft not saved', 'PLUGGD could not save this draft on your device.');
+      if(isCurrent())Alert.alert('Draft not saved', 'PLUGGD could not save this draft on your device.');
     } finally {
-      setSaving(false);
+      busy.current=false;if(isCurrent())setSaving(false);
     }
   };
 
-  const createStudioDraft = async () => {
-    if (previewMode || progress !== 3 || creating) return;
+  const openStudio=(id:string)=>{
+    if(isCurrent())router.replace({pathname:'/studio/catalog',params:{tab:`${draft.kind}s`,item:id}} as any);
+  };
+
+  const startAnotherMix = async () => {
+    if(busy.current||!draft.completedMixId)return;
+    busy.current=true;setSaving(true);
+    const next=emptyDraft('mix');
+    try {await AsyncStorage.setItem(draftKey('mix',actorId),JSON.stringify(next));assertCurrent();setDraft(next);setPendingMixSave(false);setReviewOpen(false);setStep('details');}
+    catch {if(isCurrent())Alert.alert('Draft not started','Your saved Mix is kept. Try again.');}
+    finally {busy.current=false;if(isCurrent())setSaving(false);}
+  };
+
+  const createStudioDraft = async (recoverMix=false) => {
+    if (previewMode || (!recoverMix&&progress !== 3) || busy.current) return;
+    busy.current=true;
     setCreating(true);
     setUploadStage('artwork');
     try {
-      const result = await createCreatorStudioDraft(draft, setUploadStage);
-      await AsyncStorage.removeItem(draftKey(draft.kind));
+      if(!actorId||!scope)throw new NativeMixRevisionError('changed');
+      // Persist the planned Mix ID and selected files BEFORE any remote work.
+      await AsyncStorage.setItem(draftKey(draft.kind,actorId),JSON.stringify(draft));assertCurrent();
+      const result = await createCreatorStudioDraft(draft, stage=>{assertCurrent();setUploadStage(stage);},{actorId,scope,assertCurrent,recoverMix});assertCurrent();
+      let deviceCopyWarning=false;
+      if(draft.kind==='mix') {
+        const completed={...draft,completedMixId:result.catalogId};setDraft(completed);setPendingMixSave(false);
+        try {await AsyncStorage.setItem(draftKey('mix',actorId),JSON.stringify(completed));}catch{deviceCopyWarning=true;}
+      } else {
+        try {await AsyncStorage.removeItem(draftKey(draft.kind,actorId));}catch{deviceCopyWarning=true;}
+      }
+      assertCurrent();
       setReviewOpen(false);
       selectionHaptic();
       Alert.alert(
         'Studio draft created',
-        `Your ${draft.kind} is private while PLUGGD processes the audio. Open its catalogue workspace to finish metadata, lyrics, pricing and publication.`,
+        (result.processingStatus==='ready'
+          ? `${result.current===false?'An earlier save is already in Studio.':'Your Mix and tracklist are saved.'} Open Studio to review it and choose when to publish.${draft.visibility==='public'?' Public artwork can be accessed by link before publication.':''}`
+          : `Your ${draft.kind} is private while PLUGGD processes the audio. Open its catalogue workspace to finish metadata, lyrics, pricing and publication.`)
+          +(deviceCopyWarning||result.recoveryPending?' Your device recovery copy is still kept.':''),
         [
           {
             text: 'Open Studio',
-            onPress: () => router.replace({
-              pathname: '/studio/catalog',
-              params: { tab: `${draft.kind}s`, item: result.catalogId },
-            } as any),
+            onPress: () => openStudio(result.catalogId),
           },
         ],
       );
     } catch (error) {
+      if(!isCurrent())return;
+      if(draft.kind==='mix'&&draft.plannedMixId&&actorId&&scope) {
+        try {const pending=await nativeMixRevision.hasPending({actorId,scope,mixId:draft.plannedMixId,assertCurrent});if(isCurrent())setPendingMixSave(pending);}catch{/* Error below keeps the form and reports failure. */}
+      }
+      if(!isCurrent())return;
       Alert.alert(
-        'Draft not created',
+        'Save needs attention',
         error instanceof Error ? error.message : 'PLUGGD could not create the Studio draft. Nothing was published.',
       );
     } finally {
-      setCreating(false);
-      setUploadStage(null);
+      busy.current=false;if(isCurrent()){setCreating(false);setUploadStage(null);}
     }
   };
 
@@ -610,8 +665,15 @@ export default function CreatorUpload() {
     );
   }
 
+  if(restoreError)return <View style={styles.loading}>
+    <Text style={styles.loadingText}>Your saved draft could not be opened. It is still kept on this device.</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel="Retry opening draft" onPress={()=>setRestoreAttempt(value=>value+1)} style={styles.secondaryButton}>
+      <Text style={styles.secondaryButtonText}>Try again</Text>
+    </Pressable>
+  </View>;
+
   return (
-    <UploadAccessBoundary preview={previewMode}>
+    <>
       <SafeAreaView style={styles.screen} edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
@@ -634,8 +696,8 @@ export default function CreatorUpload() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Save upload draft"
-              accessibilityState={{ disabled: previewMode }}
-              disabled={previewMode}
+              accessibilityState={{ disabled: previewMode||saving||creating }}
+              disabled={previewMode||saving||creating}
               onPress={saveDraft}
               style={[styles.saveTop, previewMode && styles.buttonDisabled]}
             >
@@ -1062,7 +1124,10 @@ export default function CreatorUpload() {
           </ScrollView>
           <View style={[styles.modalFooter, { paddingBottom: Math.max(14, insets.bottom) }]}>
             <Text style={styles.modalNote}>
-              Creating a Studio draft uploads these files and keeps the item private. It does not publish, schedule or submit the work for review.
+              {draft.completedMixId ? 'This Mix is saved. Open its Studio workspace to edit or publish it.'
+                : pendingMixSave ? 'Recover the previous save before editing or uploading again. Your files and form are kept on this device.'
+                  : draft.kind==='mix'&&draft.visibility==='public' ? 'This Mix does not appear in public listings until published. Artwork for public visibility is accessible by link.'
+                    : 'Creating a Studio draft uploads these files. It does not publish, schedule or submit the work for review.'}
             </Text>
             {creating && uploadStage ? (
               <View accessibilityLiveRegion="polite" style={styles.uploadStatus}>
@@ -1072,24 +1137,24 @@ export default function CreatorUpload() {
             ) : null}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Create private Studio draft"
-              accessibilityState={{ disabled: previewMode || progress !== 3 || creating }}
-              onPress={() => void createStudioDraft()}
-              disabled={previewMode || progress !== 3 || creating}
-              style={[styles.primaryButton, styles.modalPrimary, (previewMode || progress !== 3 || creating) && styles.buttonDisabled]}
+              accessibilityLabel={draft.completedMixId?'Open saved Mix':pendingMixSave?'Recover unfinished Mix save':'Create Studio draft'}
+              accessibilityState={{ disabled: previewMode || (!pendingMixSave&&!draft.completedMixId&&progress !== 3) || creating||saving }}
+              onPress={() => draft.completedMixId?openStudio(draft.completedMixId):void createStudioDraft(pendingMixSave)}
+              disabled={previewMode || (!pendingMixSave&&!draft.completedMixId&&progress !== 3) || creating||saving}
+              style={[styles.primaryButton, styles.modalPrimary, (previewMode || (!pendingMixSave&&!draft.completedMixId&&progress !== 3) || creating||saving) && styles.buttonDisabled]}
             >
-              {creating ? <ActivityIndicator color={theme.colors.accentText} /> : <Text style={styles.primaryButtonText}>{previewMode ? 'Preview only' : progress === 3 ? 'Create Studio draft' : 'Complete required sections'}</Text>}
+              {creating ? <ActivityIndicator color={theme.colors.accentText} /> : <Text style={styles.primaryButtonText}>{previewMode ? 'Preview only' : draft.completedMixId?'Open saved Mix':pendingMixSave?'Recover unfinished save':progress === 3 ? 'Create Studio draft' : 'Complete required sections'}</Text>}
               {!creating ? <MaterialIcons name="cloud-upload" size={18} color={theme.colors.accentText} /> : null}
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={saveDraft} disabled={previewMode || saving || creating} style={[styles.secondaryButton, previewMode && styles.buttonDisabled]}>
-              {saving ? <ActivityIndicator color={theme.colors.text} /> : <Text style={styles.secondaryButtonText}>Save on this device</Text>}
+            <Pressable accessibilityRole="button" onPress={draft.completedMixId?startAnotherMix:saveDraft} disabled={previewMode || saving || creating} style={[styles.secondaryButton, previewMode && styles.buttonDisabled]}>
+              {saving ? <ActivityIndicator color={theme.colors.text} /> : <Text style={styles.secondaryButtonText}>{draft.completedMixId?'Start another Mix':'Save on this device'}</Text>}
               {!saving ? <MaterialIcons name="save" size={18} color={theme.colors.text} /> : null}
             </Pressable>
           </View>
         </SafeAreaView>
       </Modal>
       </SafeAreaView>
-    </UploadAccessBoundary>
+    </>
   );
 }
 

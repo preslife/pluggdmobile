@@ -11,8 +11,9 @@ import { musicPlayback } from '../social-music/service';
 import { useInlineVideoVisibility } from './useInlineVideoVisibility';
 import { playInlineVideoAutomatic, setInlineVideoAutomaticAudio, setInlineVideoPrimaryAudioProtection } from './inlineVideoAudio';
 import { hydrateInlineVideoSoundPreference, setInlineVideoUserMuted, useInlineVideoSoundPreference } from './inlineVideoSoundPreference';
+import { AudioProgressQualification } from '../community-feed/communityRelevanceModel';
 
-type Props = { uri: string; blocked: boolean; onFullscreen: () => void };
+type Props = { uri: string; blocked: boolean; onFullscreen: () => void; onQualifiedListening?: (elapsedMs: number) => void };
 
 export function MobileSocialInlineVideo(props: Props) {
   const { user, session } = useAuth();
@@ -24,7 +25,7 @@ export function MobileSocialInlineVideo(props: Props) {
   return <InlineVideo key={`${context.current.revision}:${props.uri}`} {...props} />;
 }
 
-function InlineVideo({ uri, blocked, onFullscreen }: Props) {
+function InlineVideo({ uri, blocked, onFullscreen, onQualifiedListening }: Props) {
   const theme = usePluggdTheme();
   const visibility = useInlineVideoVisibility(blocked);
   const [autoplay, setAutoplay] = useState(false);
@@ -52,7 +53,7 @@ function InlineVideo({ uri, blocked, onFullscreen }: Props) {
     return () => { live = false; motion.remove(); screenReader.remove(); };
   }, []);
   return <View ref={visibility.view} collapsable={false} style={[styles.frame, { backgroundColor: theme.colors.artworkBase }]}>
-    {visibility.active && (autoplay || requested) ? <InlinePlayer uri={uri} onFullscreen={onFullscreen} claimManualPlay={claimManualPlay} screenReader={screenReaderEnabled} /> : <>
+    {visibility.active && (autoplay || requested) ? <InlinePlayer uri={uri} onFullscreen={onFullscreen} onQualifiedListening={onQualifiedListening} claimManualPlay={claimManualPlay} screenReader={screenReaderEnabled} /> : <>
       <Pressable accessibilityRole="button" accessibilityLabel="Play video in this post" style={styles.center} onPress={event => {
         event.stopPropagation(); manualPlayRequested.current = true; setRequested(true); visibility.requestPlay();
       }}><MaterialIcons name="play-circle-outline" size={48} color={theme.colors.text} /></Pressable>
@@ -60,7 +61,11 @@ function InlineVideo({ uri, blocked, onFullscreen }: Props) {
   </View>;
 }
 
-function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick<Props, 'uri' | 'onFullscreen'> & { claimManualPlay: () => boolean; screenReader: boolean }) {
+function InlinePlayer({ uri, onFullscreen, onQualifiedListening, claimManualPlay, screenReader }: Pick<Props, 'uri' | 'onFullscreen' | 'onQualifiedListening'> & { claimManualPlay: () => boolean; screenReader: boolean }) {
+  const listening = useRef(onQualifiedListening);
+  listening.current = onQualifiedListening;
+  const qualification = useRef(new AudioProgressQualification());
+  useEffect(() => { qualification.current.reset(); }, [onQualifiedListening]);
   const { pause, isPlaying: musicPlaying, isBuffering, currentTrack } = usePlayback();
   const musicActive = musicPlaying || isBuffering;
   const musicTrackKey = `${currentTrack?.id ?? ''}:${currentTrack?.url ?? ''}`;
@@ -145,9 +150,15 @@ function InlinePlayer({ uri, onFullscreen, claimManualPlay, screenReader }: Pick
       if (event.status === 'error') setStatus('error');
     });
     const playingSub = player.addListener('playingChange', event => { if (current) setPlaying(event.isPlaying); });
-    const timeSub = player.addListener('timeUpdate', event => { if (current) setPosition(event.currentTime); });
+    const timeSub = player.addListener('timeUpdate', event => {
+      if (!current) return;
+      setPosition(event.currentTime);
+      if (!listening.current) return;
+      const elapsed = qualification.current.sample(uri, event.currentTime, player.playing, player.muted ? 0 : player.volume, true);
+      if (elapsed >= 10_000) listening.current(elapsed);
+    });
     const mutedSub = player.addListener('mutedChange', event => { if (current) setMuted(event.muted); });
-    return () => { current = false; controller.abort(); statusSub.remove(); playingSub.remove(); timeSub.remove(); mutedSub.remove(); };
+    return () => { current = false; qualification.current.reset(); controller.abort(); statusSub.remove(); playingSub.remove(); timeSub.remove(); mutedSub.remove(); };
   }, [uri, retry, player, pause, claimManualPlay]);
   useEffect(() => {
     const started = musicActive && (!previousMusic.current.playing || previousMusic.current.trackKey !== musicTrackKey);

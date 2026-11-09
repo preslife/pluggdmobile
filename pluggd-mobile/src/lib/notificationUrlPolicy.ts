@@ -12,6 +12,7 @@ const SAFE_NOTIFICATION_ROUTE_ROOTS = new Set([
   'product',
   'release',
   'soundboards',
+  'split',
   'story',
   'tickets',
 ]);

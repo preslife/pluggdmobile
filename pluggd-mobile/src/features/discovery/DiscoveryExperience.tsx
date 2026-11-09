@@ -21,6 +21,7 @@ import { impactHaptic, selectionHaptic } from '../../design/haptics';
 import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { supabase } from '../../lib/supabase';
+import { prepareCreatorListings, proFirst } from '../../lib/creatorListings';
 import type { EventItem, ProfileItem } from '../../lib/mobileContent';
 import { loadMobileSocialFeed } from '../culture/mobileSocial';
 import { safeList } from '../culture/mobileServices';
@@ -437,7 +438,7 @@ export function DiscoveryExperience() {
         const key = profile.user_id || profile.id || profile.username;
         if (key) profiles.set(key, profile);
       });
-      return [...profiles.values()];
+      return prepareCreatorListings([...profiles.values()]);
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -453,7 +454,7 @@ export function DiscoveryExperience() {
         if (key) profilesByName.set(key, profile);
       });
     });
-    const seen = new Map<string, { name: string; artwork: string | null; meta: string; route: string }>();
+    const seen = new Map<string, { name: string; artwork: string | null; meta: string; route: string; is_pro: boolean }>();
     allItems.forEach((item) => {
       if (item.kind !== 'release' && item.kind !== 'beat') return;
       const profile = (item.creatorId ? profilesById.get(item.creatorId) : null)
@@ -466,9 +467,10 @@ export function DiscoveryExperience() {
         artwork: profile.avatar_url || item.artwork,
         meta: profile.primary_genre || profile.city || item.genre || 'Independent creator',
         route,
+        is_pro: Boolean(profile.is_pro),
       });
     });
-    return [...seen.values()].slice(0, 8);
+    return proFirst([...seen.values()]).slice(0, 8);
   }, [actualProfiles.data, allItems]);
 
   const soundboards = useMemo(() => (feed.data?.soundboards ?? []).slice(0, 3), [feed.data?.soundboards]);
@@ -752,6 +754,7 @@ export function DiscoveryExperience() {
               </>
             ) : null}
 
+            {actualProfiles.isError ? <Pressable accessibilityRole="button" accessibilityLabel="Retry creator listings" onPress={() => void actualProfiles.refetch()}><Text style={styles.chartMeta}>Creator listings unavailable. Tap to try again.</Text></Pressable> : null}
             {creators.length ? (
               <>
                 <View style={styles.sectionHeader}><View><Text style={styles.sectionEyebrow}>CREATORS TO WATCH</Text><Text style={styles.sectionTitle}>Shaping the feed</Text></View></View>
@@ -760,7 +763,7 @@ export function DiscoveryExperience() {
                     <Pressable accessibilityRole="button" accessibilityLabel={`Open ${creator.name}`} key={`creator-${creator.route}`} onPress={() => navigate(creator.route)} style={styles.creatorCard}>
                       {creator.artwork ? <PluggdImage uri={creator.artwork} style={styles.creatorArt} displayWidth={180} /> : <PluggdImage uri="" fallbackSource={DISCOVERY_DESTINATION_ART.creators} style={styles.creatorArt} />}
                       <Text style={styles.creatorName} numberOfLines={1}>{creator.name}</Text>
-                      <Text style={styles.chartMeta} numberOfLines={1}>{creator.meta}</Text>
+                      <Text style={styles.chartMeta} numberOfLines={1}>{creator.is_pro ? `Pro · ${creator.meta}` : creator.meta}</Text>
                     </Pressable>
                   ))}
                 </ScrollView>

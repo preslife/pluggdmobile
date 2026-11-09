@@ -2,10 +2,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { pluggdFonts } from '../../src/design/typography';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { confirmRecommendationOpen, clearRecommendationOpen } from '../../src/features/community-feed/communityRelevanceController';
+import { assertRelevanceActor, STALE_RELEVANCE } from '../../src/features/community-feed/communityRelevanceService';
+import { supabase } from '../../src/lib/supabase';
+import { ActivityIndicator, Alert, AppState, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RecoveryState } from '../../components/ContentUI';
 import { useAuth } from '../../src/context/AuthProvider';
@@ -28,13 +31,31 @@ export default function SocialPostDetailRoute() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
+  const tokenRevision = useRef({ token: session?.access_token, value: 0 });
+  if (tokenRevision.current.token !== session?.access_token) tokenRevision.current = { token: session?.access_token, value: tokenRevision.current.value + 1 };
   const [comment, setComment] = useState('');
+  const [focused, setFocused] = useState(false);
+  useFocusEffect(useCallback(() => {
+    setFocused(true);
+    const subscription = AppState.addEventListener('change', value => { if (value !== 'active') clearRecommendationOpen(); });
+    return () => { setFocused(false); subscription.remove(); clearRecommendationOpen(); };
+  }, []));
 
   const query = useQuery({
-    queryKey: ['culture', 'post-detail', id],
-    queryFn: () => loadPostDetail(String(id)),
-    enabled: !!id,
+    queryKey: ['culture', 'post-detail', id, user?.id ?? 'guest', tokenRevision.current.value],
+    queryFn: async ({ signal }) => {
+      const actor = user?.id && session?.access_token ? { id: user.id, token: session.access_token } : null;
+      const check = async () => {
+        if (actor) await assertRelevanceActor(actor, signal);
+        else { const auth = await supabase.auth.getSession(); if (auth.error || signal.aborted || auth.data.session) throw new Error(STALE_RELEVANCE); }
+      };
+      await check();
+      const detail = await loadPostDetail(String(id));
+      await check();
+      return detail;
+    },
+    enabled: !!id && !authLoading,
   });
 
   const likeMutation = useMutation({
@@ -43,7 +64,7 @@ export default function SocialPostDetailRoute() {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
       void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
-      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id, user?.id ?? 'guest'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'backstage'] });
     },
@@ -61,7 +82,7 @@ export default function SocialPostDetailRoute() {
         return;
       }
       void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
-      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id, user?.id ?? 'guest'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'home-feed'] });
     },
     onError: (error) => Alert.alert('Comment failed', error instanceof Error ? error.message : String(error)),
@@ -73,7 +94,7 @@ export default function SocialPostDetailRoute() {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
       void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
-      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id, user?.id ?? 'guest'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
     },
     onError: (error) => Alert.alert('Save failed', error instanceof Error ? error.message : String(error)),
@@ -85,7 +106,7 @@ export default function SocialPostDetailRoute() {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
       void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
-      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id, user?.id ?? 'guest'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
     },
     onError: (error) => Alert.alert('Repost failed', error instanceof Error ? error.message : String(error)),
@@ -97,13 +118,14 @@ export default function SocialPostDetailRoute() {
       if (!result.success) throw new Error(result.error);
       impactHaptic();
       void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
-      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id] });
+      void queryClient.invalidateQueries({ queryKey: ['culture', 'post-detail', id, user?.id ?? 'guest'] });
       void queryClient.invalidateQueries({ queryKey: ['culture', 'mobile-social-feed'] });
     },
     onError: (error) => Alert.alert('Vote failed', error instanceof Error ? error.message : String(error)),
   });
 
   const post = query.data?.post;
+  useEffect(() => { if (focused && AppState.currentState === 'active' && post?.id === String(id)) void confirmRecommendationOpen(user?.id ?? null, post.id); }, [post?.id, id, user?.id, focused]);
   const postBody = post?.content || '';
   const title = postBody || (post?.is_repost ? 'Repost' : 'Post');
   const imageMedia = post?.images?.[0] || null;

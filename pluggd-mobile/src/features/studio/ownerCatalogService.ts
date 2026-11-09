@@ -1,7 +1,12 @@
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../lib/supabase';
+import { requireCreatorMonthlyAllowance } from '../../lib/creatorPlanAccess';
 import { uploadFileToSupabaseStorage } from '../../lib/storageUpload';
+import { mixAccessSession, type MixAccessScope } from '../playback/mixAccessSession';
+import { nativeMixMediaPreparation } from './nativeMixMediaPreparation';
+import { nativeMixRevision, NativeMixRevisionError } from './nativeMixRevision';
 
 export type OwnerCatalogKind = 'release' | 'beat' | 'mix';
 
@@ -25,6 +30,8 @@ export type OwnerReleaseTrack = {
 };
 
 export type OwnerCatalogRecord = {
+  mixScope?: MixAccessScope;
+  assertCurrent?: () => void;
   id: string;
   kind: OwnerCatalogKind;
   title: string;
@@ -116,13 +123,19 @@ function mapTrack(row: any): OwnerReleaseTrack {
   };
 }
 
-export async function loadOwnerCatalogRecord(kind: OwnerCatalogKind, id: string): Promise<OwnerCatalogRecord> {
+export async function loadOwnerCatalogRecord(kind: OwnerCatalogKind, id: string, assertCurrent?:()=>void): Promise<OwnerCatalogRecord> {
+  const scope=kind==='mix'?mixAccessSession.scope():undefined;
+  assertCurrent?.();
   const userId = await currentUserId();
+  assertCurrent?.();
+  if(scope){mixAccessSession.assertCurrent(scope);if(scope.actor!==userId)throw new NativeMixRevisionError('changed');}
   const db = supabase as any;
   const table = kind === 'release' ? 'releases' : kind === 'beat' ? 'beats' : 'mixes';
   const ownerColumn = kind === 'mix' ? 'owner_user_id' : 'user_id';
   const result = await db.from(table).select('*').eq('id', id).eq(ownerColumn, userId).maybeSingle();
   if (result.error) throw result.error;
+  assertCurrent?.();
+  if(scope)mixAccessSession.assertCurrent(scope);
   if (!result.data?.id) throw new Error('This item is not available in your Creator Studio.');
   const row = result.data as Record<string, any>;
 
@@ -145,6 +158,7 @@ export async function loadOwnerCatalogRecord(kind: OwnerCatalogKind, id: string)
       : row.status === 'published' && row.visibility === 'public';
 
   return {
+    mixScope:scope,assertCurrent,
     id,
     kind,
     title: String(row.title || ''),
@@ -159,8 +173,60 @@ export async function loadOwnerCatalogRecord(kind: OwnerCatalogKind, id: string)
   };
 }
 
+async function ownerMixContext(record:OwnerCatalogRecord) {
+  const scope=record.mixScope??mixAccessSession.scope();
+  const actorId=scope.actor;
+  const check=()=>{record.assertCurrent?.();mixAccessSession.assertCurrent(scope);};
+  check();
+  if(record.kind!=='mix'||!actorId||record.raw.owner_user_id!==actorId)throw new NativeMixRevisionError('changed');
+  if(await currentUserId()!==actorId)throw new NativeMixRevisionError('changed');check();
+  return{actorId,scope,mixId:record.id,assertCurrent:check};
+}
+
+const copyKey=(actorId:string,id:string)=>`pluggd:mix-copy:v1:${actorId}:${id}`;
+async function copyPlan(context:{actorId:string;mixId:string;assertCurrent:()=>void}) {
+  const saved=await AsyncStorage.getItem(copyKey(context.actorId,context.mixId));context.assertCurrent();
+  if(!saved)return null;
+  const plan=JSON.parse(saved) as {id:string};
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(plan?.id))throw new NativeMixRevisionError();
+  return plan;
+}
+
+async function pendingFor(context:Awaited<ReturnType<typeof ownerMixContext>>) {
+  if(await nativeMixRevision.hasPending(context))return{...context,copy:false};
+  const plan=await copyPlan(context);
+  if(plan&&await nativeMixRevision.hasPending({...context,mixId:plan.id}))return{...context,mixId:plan.id,copy:true};
+  context.assertCurrent();return null;
+}
+
+export async function ownerMixPendingSave(record:OwnerCatalogRecord) {return pendingFor(await ownerMixContext(record));}
+
+export async function recoverOwnerMixSave(record:OwnerCatalogRecord) {
+  const pending=await ownerMixPendingSave(record);
+  if(!pending)throw new NativeMixRevisionError('noPending');
+  const saved=await nativeMixRevision.resume(pending);pending.assertCurrent();
+  if(pending.copy)await AsyncStorage.removeItem(copyKey(pending.actorId,record.id)).catch(()=>undefined);
+  pending.assertCurrent();return{...saved,copy:pending.copy};
+}
+
+async function saveOwnerMix(record:OwnerCatalogRecord,details:Record<string,unknown>,assets?:{audio?:OwnerCatalogAsset;cover?:OwnerCatalogAsset}) {
+  const context=await ownerMixContext(record);
+  if(await pendingFor(context))throw new NativeMixRevisionError('pending');
+  context.assertCurrent();
+  const visibility=(details.visibility??record.raw.visibility) as 'private'|'unlisted'|'public';
+  if(!['private','unlisted','public'].includes(visibility))throw new NativeMixRevisionError('invalid');
+  const audio=await nativeMixMediaPreparation.prepare({...context,visibility,kind:'audio',file:assets?.audio,existing:record.raw.audio_url});context.assertCurrent();
+  const cover=await nativeMixMediaPreparation.prepare({...context,visibility,kind:'cover',file:assets?.cover,existing:record.raw.cover_url});context.assertCurrent();
+  // Unchanged legacy signed pointers stay in the server row, never in durable
+  // request receipts. Only freshly prepared replacements enter the payload.
+  const patch={...details};
+  if(audio!==record.raw.audio_url)patch.audio_url=audio;
+  if(cover!==(record.raw.cover_url??null))patch.cover_url=cover;
+  return nativeMixRevision.save({...context,expectedUpdatedAt:record.raw.updated_at,details:patch});
+}
+
 export async function saveOwnerCatalogRecord(record: OwnerCatalogRecord, input: CatalogSaveInput) {
-  const userId = await currentUserId();
+  const userId = record.kind==='mix'?record.raw.owner_user_id:await currentUserId();
   const db = supabase as any;
   const title = input.title.trim();
   if (!title) throw new Error('Add a title before saving.');
@@ -220,19 +286,22 @@ export async function saveOwnerCatalogRecord(record: OwnerCatalogRecord, input: 
     description,
     genre_tags: cleanList(input.tags),
     mood_tags: cleanList(input.moods),
-    visibility: input.visibility || 'private',
+    visibility: input.visibility ?? record.raw.visibility,
     allow_download: Boolean(input.allowDownload),
     recording_type: input.recordingType?.trim() || null,
     event_name: input.eventName?.trim() || null,
     city: input.city?.trim() || null,
-    bpm_min: input.bpmMin == null ? null : Math.max(1, Math.round(input.bpmMin)),
-    bpm_max: input.bpmMax == null ? null : Math.max(1, Math.round(input.bpmMax)),
+    bpm_min: input.bpmMin ?? null,
+    bpm_max: input.bpmMax ?? null,
   };
-  const result = await db.from('mixes').update(payload).eq('id', record.id).eq('owner_user_id', userId).select('id').single();
-  if (result.error) throw result.error;
+  if(payload.genre_tags.length<1||payload.genre_tags.length>5||payload.mood_tags.length>3)throw new Error('Choose one to five genres and up to three moods.');
+  if([payload.bpm_min,payload.bpm_max].some(value=>value!==null&&(!Number.isInteger(value)||value<1||value>999))
+    ||(payload.bpm_min!==null&&payload.bpm_max!==null&&payload.bpm_min>payload.bpm_max))throw new Error('Choose a BPM range between 1 and 999.');
+  return saveOwnerMix(record,payload);
 }
 
 export async function submitOwnerCatalogForReview(record: OwnerCatalogRecord) {
+  if(record.kind==='mix')return saveOwnerMix(record,{status:'published'});
   const userId = await currentUserId();
   const db = supabase as any;
   if (record.kind === 'release') {
@@ -251,31 +320,26 @@ export async function submitOwnerCatalogForReview(record: OwnerCatalogRecord) {
     if (result.error) throw result.error;
     return;
   }
-  const visibility = record.raw.visibility === 'private' ? 'unlisted' : record.raw.visibility;
-  const result = await db.from('mixes').update({ status: 'published', visibility, published_at: new Date().toISOString() }).eq('id', record.id).eq('owner_user_id', userId).select('id').single();
-  if (result.error) throw result.error;
 }
 
 export async function removeOwnerCatalogFromPublic(record: OwnerCatalogRecord) {
+  if(record.kind==='mix')return saveOwnerMix(record,{status:'archived',visibility:'private'});
   const userId = await currentUserId();
   const db = supabase as any;
   const query = record.kind === 'release'
     ? db.from('releases').update({ status: 'hidden', visibility_status: 'hidden', approved: false }).eq('id', record.id).eq('user_id', userId)
-    : record.kind === 'beat'
-      ? db.from('beats').update({ is_published: false }).eq('id', record.id).eq('user_id', userId)
-      : db.from('mixes').update({ status: 'archived', visibility: 'private', published_at: null }).eq('id', record.id).eq('owner_user_id', userId);
+    : db.from('beats').update({ is_published: false }).eq('id', record.id).eq('user_id', userId);
   const result = await query.select('id').single();
   if (result.error) throw result.error;
 }
 
 export async function restoreOwnerCatalogDraft(record: OwnerCatalogRecord) {
+  if(record.kind==='mix')return saveOwnerMix(record,{status:'draft',visibility:'private'});
   const userId = await currentUserId();
   const db = supabase as any;
   const query = record.kind === 'release'
     ? db.from('releases').update({ status: 'draft', visibility_status: 'staged', approved: false, approval_status: 'pending' }).eq('id', record.id).eq('user_id', userId)
-    : record.kind === 'beat'
-      ? db.from('beats').update({ is_published: false, moderation_status: record.raw.moderation_status === 'hidden' ? 'pending' : record.raw.moderation_status }).eq('id', record.id).eq('user_id', userId)
-      : db.from('mixes').update({ status: 'draft', visibility: 'private', published_at: null }).eq('id', record.id).eq('owner_user_id', userId);
+    : db.from('beats').update({ is_published: false, moderation_status: record.raw.moderation_status === 'hidden' ? 'pending' : record.raw.moderation_status }).eq('id', record.id).eq('user_id', userId);
   const result = await query.select('id').single();
   if (result.error) throw result.error;
 }
@@ -293,9 +357,10 @@ function pickFields(source: Record<string, any>, fields: readonly string[]) {
 }
 
 export async function duplicateOwnerCatalogRecord(record: OwnerCatalogRecord) {
-  const userId = await currentUserId();
+  const userId = record.kind==='mix'?record.raw.owner_user_id:await currentUserId();
   const db = supabase as any;
   if (record.kind === 'release') {
+    await requireCreatorMonthlyAllowance(userId, 'release');
     const payload = {
       ...pickFields(record.raw, RELEASE_COPY_FIELDS),
       title: `Copy of ${record.title}`,
@@ -354,29 +419,32 @@ export async function duplicateOwnerCatalogRecord(record: OwnerCatalogRecord) {
     return { id: String(result.data.id), kind: record.kind };
   }
 
-  const payload = {
-    ...pickFields(record.raw, ['description', 'cover_url', 'audio_url', 'audio_file_id', 'duration_seconds', 'city', 'genre_tags', 'mood_tags', 'recording_type', 'event_name', 'bpm_min', 'bpm_max', 'allow_download']),
-    owner_user_id: userId,
-    title: `Copy of ${record.title}`,
-    slug: null,
-    status: 'draft',
-    visibility: 'private',
-    published_at: null,
-  };
-  const result = await db.from('mixes').insert(payload).select('id').single();
-  if (result.error || !result.data?.id) throw result.error || new Error('Mix copy was not created.');
-  return { id: String(result.data.id), kind: record.kind };
+  const context=await ownerMixContext(record);
+  if(await pendingFor(context))throw new NativeMixRevisionError('pending');
+  let plan=await copyPlan(context);
+  if(!plan){plan={id:Crypto.randomUUID()};await AsyncStorage.setItem(copyKey(userId,record.id),JSON.stringify(plan));context.assertCurrent();}
+  const existing=await db.from('mixes').select('id').eq('id',plan.id).eq('owner_user_id',userId).maybeSingle();context.assertCurrent();
+  if(existing.error)throw new NativeMixRevisionError();
+  if(existing.data?.id){await AsyncStorage.removeItem(copyKey(userId,record.id)).catch(()=>undefined);context.assertCurrent();return{id:plan.id,kind:record.kind};}
+  const target={...context,mixId:plan.id,sourceMixId:record.id,visibility:'private' as const};
+  const audio=await nativeMixMediaPreparation.prepare({...target,kind:'audio',existing:record.raw.audio_url});context.assertCurrent();
+  const cover=await nativeMixMediaPreparation.prepare({...target,kind:'cover',existing:record.raw.cover_url});context.assertCurrent();
+  const saved=await nativeMixRevision.save({...context,mixId:plan.id,create:true,sourceMixId:record.id,sourceUpdatedAt:record.raw.updated_at,
+    details:{audio_url:audio,cover_url:cover,status:'draft',visibility:'private'}});context.assertCurrent();
+  await AsyncStorage.removeItem(copyKey(userId,record.id)).catch(()=>undefined);context.assertCurrent();
+  return {id:saved.id,kind:record.kind};
 }
 
 export async function replaceOwnerCatalogArtwork(record: OwnerCatalogRecord, asset: OwnerCatalogAsset) {
+  if(record.kind==='mix')return saveOwnerMix(record,{}, {cover:asset});
   const userId = await currentUserId();
   const path = `${userId}/${record.kind}/${Date.now()}-${Crypto.randomUUID()}.${extensionFor(asset, 'jpg')}`;
   await uploadFileToSupabaseStorage({ bucket: 'release-artwork', path, uri: asset.uri, contentType: asset.mimeType || 'image/jpeg' });
   const url = supabase.storage.from('release-artwork').getPublicUrl(path).data.publicUrl;
   const db = supabase as any;
-  const table = record.kind === 'release' ? 'releases' : record.kind === 'beat' ? 'beats' : 'mixes';
-  const ownerColumn = record.kind === 'mix' ? 'owner_user_id' : 'user_id';
-  const artworkColumn = record.kind === 'release' ? 'cover_art_url' : record.kind === 'beat' ? 'image_url' : 'cover_url';
+  const table = record.kind === 'release' ? 'releases' : 'beats';
+  const ownerColumn = 'user_id';
+  const artworkColumn = record.kind === 'release' ? 'cover_art_url' : 'image_url';
   const result = await db.from(table).update({ [artworkColumn]: url }).eq('id', record.id).eq(ownerColumn, userId).select('id').single();
   if (result.error) {
     await supabase.storage.from('release-artwork').remove([path]);
@@ -410,6 +478,7 @@ async function createReplacementAudio(asset: OwnerCatalogAsset, kind: OwnerCatal
 }
 
 export async function replaceOwnerCatalogAudio(record: OwnerCatalogRecord, asset: OwnerCatalogAsset, trackId?: string) {
+  if(record.kind==='mix')return saveOwnerMix(record,{status:'draft',visibility:'private',duration_seconds:null}, {audio:asset});
   const replacement = await createReplacementAudio(asset, record.kind);
   const db = supabase as any;
   let previous: { audio_url?: string | null; audio_file_id?: string | null } | null = null;
@@ -423,14 +492,12 @@ export async function replaceOwnerCatalogAudio(record: OwnerCatalogRecord, asset
       const update = await db.from('tracks').update({ audio_url: replacement.streamUrl, audio_file_id: replacement.id, playable_on_pluggd: false }).eq('id', trackId).eq('release_id', record.id).select('id').single();
       if (update.error) throw update.error;
     } else {
-      const table = record.kind === 'beat' ? 'beats' : 'mixes';
-      const ownerColumn = record.kind === 'mix' ? 'owner_user_id' : 'user_id';
+      const table = 'beats';
+      const ownerColumn = 'user_id';
       const current = await db.from(table).select('audio_url,audio_file_id').eq('id', record.id).eq(ownerColumn, replacement.userId).single();
       if (current.error) throw current.error;
       previous = current.data;
-      const payload = record.kind === 'beat'
-        ? { audio_url: replacement.streamUrl, audio_file_id: replacement.id, is_published: false, moderation_status: 'pending' }
-        : { audio_url: replacement.streamUrl, audio_file_id: replacement.id, status: 'draft', visibility: 'private', published_at: null };
+      const payload = { audio_url: replacement.streamUrl, audio_file_id: replacement.id, is_published: false, moderation_status: 'pending' };
       const update = await db.from(table).update(payload).eq('id', record.id).eq(ownerColumn, replacement.userId).select('id').single();
       if (update.error) throw update.error;
     }
@@ -441,7 +508,6 @@ export async function replaceOwnerCatalogAudio(record: OwnerCatalogRecord, asset
     if (previous) {
       if (record.kind === 'release' && trackId) await db.from('tracks').update(previous).eq('id', trackId).eq('release_id', record.id);
       if (record.kind === 'beat') await db.from('beats').update(previous).eq('id', record.id).eq('user_id', replacement.userId);
-      if (record.kind === 'mix') await db.from('mixes').update(previous).eq('id', record.id).eq('owner_user_id', replacement.userId);
     }
     await db.from('audio_files').delete().eq('id', replacement.id).eq('user_id', replacement.userId);
     await supabase.storage.from('audio-files').remove([replacement.path]);

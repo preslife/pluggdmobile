@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+const ts = createRequire(import.meta.url)('typescript');
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const uploadScreen = read('app/creator/upload.tsx');
@@ -12,7 +14,7 @@ assert(uploadScreen.includes('createCreatorStudioDraft'), 'Creator Upload must c
 assert(uploadScreen.includes('Create Studio draft'), 'Final review must expose the private Studio draft action');
 assert(uploadScreen.includes('Save on this device'), 'Local device save must remain a separate explicit action');
 assert(uploadScreen.includes('It does not publish, schedule or submit'), 'Review must not claim that a draft is published');
-assert(uploadScreen.includes("pathname: '/studio/catalog'"), 'Confirmed draft creation must return to the owner catalogue workspace');
+assert(/pathname:\s*['"]\/studio\/catalog['"]/.test(uploadScreen), 'Confirmed draft creation must return to the owner catalogue workspace');
 
 for (const field of [
   'Featured / additional artists',
@@ -61,7 +63,19 @@ assert(uploadScreen.includes("draft.kind === 'release'"), 'AI disclosure must re
 assert(uploadScreen.includes('releaseAiErrors(draft).length === 0'), 'Release readiness must use the conditional web AI validation');
 assert(uploadScreen.includes('previewMode = __DEV__'), 'Form preview must be development-only');
 assert(uploadScreen.includes('FORM PREVIEW · NO ACCOUNT DATA'), 'Form preview must visibly disclose that it contains no account data');
-assert(uploadScreen.includes('if (previewMode) return;'), 'Development preview must block local save and media picker mutations');
+const ast = ts.createSourceFile('upload.tsx', uploadScreen, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const guarded = new Set();
+const previewActions = ['chooseArtwork', 'chooseAudio', 'chooseSupplementaryAudio', 'chooseAdditionalTrackAudio', 'saveDraft', 'createStudioDraft'];
+function inspect(node) {
+  if (ts.isVariableDeclaration(node) && previewActions.includes(node.name.getText(ast))) {
+    const first = node.initializer?.body?.statements?.[0];
+    if (first && ts.isIfStatement(first) && first.expression.getText(ast).replace(/\s/g, '').startsWith('previewMode')
+      && ts.isReturnStatement(first.thenStatement)) guarded.add(node.name.getText(ast));
+  }
+  ts.forEachChild(node, inspect);
+}
+inspect(ast);
+for (const name of previewActions) assert(guarded.has(name), `Development preview must block ${name} before any mutation`);
 
 for (const bucket of ["bucket: 'release-artwork'", "bucket: 'audio-files'"]) {
   assert(uploadService.includes(bucket), `Creator upload must use ${bucket}`);
@@ -73,7 +87,7 @@ for (const table of ["from('audio_files')", "from('releases')", "from('tracks')"
 assert(uploadService.includes("processing_status: 'pending'"), 'Audio records must begin in a truthful pending state');
 assert(uploadService.includes("functions.invoke('process-audio-upload'"), 'Audio processing must start explicitly');
 assert(uploadService.includes("status: 'draft'"), 'Release and mix creation must remain drafts');
-assert(uploadService.includes('visibility: draft.visibility'), 'Mix creation must preserve the selected access setting');
+assert(/visibility:\s*draft\.visibility/.test(uploadService), 'Mix creation must preserve the selected access setting');
 assert(uploadService.includes("status: 'draft'"), 'Mix creation must remain an unpublished draft regardless of its eventual access setting');
 assert(uploadService.includes('is_published: false'), 'Beat drafts must remain unpublished');
 assert(uploadService.includes('playable_on_pluggd: false'), 'Draft release tracks must remain non-public');
@@ -96,7 +110,7 @@ assert(uploadService.includes('featured_artists: cleanFeaturedArtists'), 'Releas
 assert(uploadService.includes('const trackRows = releaseTracks.map'), 'Release drafts must persist every titled audio track');
 assert(uploadService.includes('license_prices: Object.fromEntries'), 'Beat drafts must persist the enabled web licence matrix');
 assert(uploadService.includes('stems_url: supplementaryUrls.stemsUrl'), 'Beat drafts must persist stems');
-assert(uploadService.includes('mood_tags: draft.moods'), 'Mix drafts must persist their owner metadata');
+assert(/mood_tags:\s*draft\.moods/.test(uploadService), 'Mix drafts must persist their owner metadata');
 assert(uploadService.includes("storage.from(object.bucket).remove([object.path])"), 'Rollback must remove only newly uploaded objects');
 assert(!uploadService.includes('service_role'), 'The native client must never contain a service-role credential');
 

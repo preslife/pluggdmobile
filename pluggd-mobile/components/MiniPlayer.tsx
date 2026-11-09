@@ -1,8 +1,10 @@
 import { usePathname, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { selectionHaptic } from '../src/design/haptics';
 import { usePlayback, type PluggdTrack } from '../src/context/PlaybackProvider';
+import { isProtectedMix } from '../src/features/playback/protectedMixPlayback';
+import { mixAccessSession } from '../src/features/playback/mixAccessSession';
 import { toggleSavedContent } from '../src/features/culture/mobileServices';
 import { formatDuration } from '../src/lib/mobileContent';
 import { GlassMiniPlayer } from './liquid-glass';
@@ -47,6 +49,8 @@ export default function MiniPlayer() {
     seekTo,
     closePlayer,
   } = usePlayback();
+  const latestTrack = useRef(currentTrack);
+  latestTrack.current = currentTrack;
   const [collapsed, setCollapsed] = useState(() => shouldDefaultCollapseMiniPlayer(normalizedPathname));
   const [savedLocally, setSavedLocally] = useState(false);
   // Native builds must never invent a current track. The fixture remains
@@ -55,10 +59,11 @@ export default function MiniPlayer() {
   const [qaPlaying, setQaPlaying] = useState(true);
 
   const favoriteTarget = useMemo(() => {
+    if (isProtectedMix(currentTrack)) return null;
     if (currentTrack?.beatId) return { kind: 'beat' as const, id: currentTrack.beatId };
     if (currentTrack?.releaseId) return { kind: 'release' as const, id: currentTrack.releaseId };
     return null;
-  }, [currentTrack?.beatId, currentTrack?.releaseId]);
+  }, [currentTrack?.beatId, currentTrack?.releaseId, currentTrack?.mixAccess]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return undefined;
@@ -97,14 +102,7 @@ export default function MiniPlayer() {
 
   const openPlayer = () => {
     selectionHaptic();
-    router.push({
-      pathname: '/player',
-      params: {
-        title: activeTrack.title,
-        artist: activeTrack.artist,
-        cover: activeTrack.artwork ?? '',
-      },
-    });
+    router.push('/player');
   };
 
   const progressPercent =
@@ -114,7 +112,7 @@ export default function MiniPlayer() {
   const progressLabel = currentTrack && progress.duration > 0
     ? `${progress.position > 0 ? formatDuration(progress.position) : '0:00'} / ${formatDuration(progress.duration)}`
     : undefined;
-  const backstageRoute = activeTrack?.backstageRoute || (activeTrack?.backstageId ? `/backstage/${activeTrack.backstageId}` : undefined);
+  const backstageRoute = !isProtectedMix(activeTrack) ? activeTrack?.backstageRoute || (activeTrack?.backstageId ? `/backstage/${activeTrack.backstageId}` : undefined) : undefined;
   const backstageLabel =
     typeof activeTrack?.backstageActiveCount === 'number' && activeTrack.backstageActiveCount > 0
       ? `${activeTrack.backstageActiveCount} community`
@@ -126,37 +124,37 @@ export default function MiniPlayer() {
     router.push({
       pathname: '/player',
       params: {
-        title: activeTrack.title,
-        artist: activeTrack.artist,
-        cover: activeTrack.artwork ?? '',
         focus: 'queue',
       },
     });
   };
 
   const saveCurrentTrack = async () => {
+    if (isProtectedMix(currentTrack) || latestTrack.current !== currentTrack) return;
+    const scope = mixAccessSession.scope();
     selectionHaptic();
     if (!favoriteTarget) {
       Alert.alert('Save unavailable', 'This track does not expose a release or beat favorite target yet.');
       return;
     }
 
-    const result = await toggleSavedContent(favoriteTarget.kind, favoriteTarget.id);
-    if (!result.success) {
-      if (result.error?.toLowerCase().includes('sign in')) {
-        router.push('/auth/login' as any);
+    try {
+      const result = await toggleSavedContent(favoriteTarget.kind, favoriteTarget.id);
+      if (latestTrack.current !== currentTrack || !mixAccessSession.current(scope)) return;
+      if (!result.success) {
+        if (result.error?.toLowerCase().includes('sign in')) router.push('/auth/login' as any);
+        else Alert.alert('Save failed', 'This item could not be saved. Please try again.');
         return;
       }
-      Alert.alert('Save failed', result.error || 'This item could not be saved.');
-      return;
+      setSavedLocally(Boolean(result.saved));
+    } catch {
+      if (latestTrack.current === currentTrack && mixAccessSession.current(scope)) Alert.alert('Save failed', 'This item could not be saved. Please try again.');
     }
-
-    setSavedLocally(Boolean(result.saved));
   };
 
   const openMore = () => {
     selectionHaptic();
-    Alert.alert(activeTrack.title, activeTrack.isLocked ? 'Locked preview controls' : 'Player options', [
+    Alert.alert(isProtectedMix(activeTrack) ? 'Player options' : activeTrack.title, activeTrack.isLocked ? 'Locked preview controls' : 'Player options', [
       { text: 'Open full player', onPress: openPlayer },
       { text: `Queue (${queue.length})`, onPress: openQueue },
       favoriteTarget ? { text: savedLocally ? 'Remove saved' : 'Save track', onPress: saveCurrentTrack } : undefined,

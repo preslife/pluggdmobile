@@ -21,6 +21,7 @@ import { CreatorAccessGate } from '../../components/CreatorAccessGate';
 import type { PluggdTheme } from '../../src/design/tokens';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { supabase } from '../../src/lib/supabase';
+import { requireCreatorPlanFeature } from '../../src/lib/creatorPlanAccess';
 
 function Text({ maxFontSizeMultiplier = 1.3, ...props }: TextProps) {
   return <NativeText maxFontSizeMultiplier={maxFontSizeMultiplier} {...props} />;
@@ -244,6 +245,11 @@ export default function CreatorEventsScreen() {
       if (!user) {
         router.push('/auth/login');
         return;
+      }
+
+      const originalPrice = events.find((event) => event.id === editingId)?.price_cents ?? 0;
+      if (priceCents > 0 && (!editingId || originalPrice <= 0)) {
+        await requireCreatorPlanFeature(user.id, 'sell_tickets');
       }
 
       const payload = {

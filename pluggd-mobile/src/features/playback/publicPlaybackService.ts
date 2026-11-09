@@ -53,7 +53,7 @@ function finite(value: unknown) {
 }
 
 export function playbackIdentity(track?: Partial<PluggdTrack> | null): { type: PlaybackCatalogType; id: string } | null {
-  if (!track) return null;
+  if (!track || track.mixAccess) return null;
   if (track.trackId) return { type: 'track', id: track.trackId };
   if (track.beatId) return { type: 'beat', id: track.beatId };
   if (track.mixId) return { type: 'mix', id: track.mixId };

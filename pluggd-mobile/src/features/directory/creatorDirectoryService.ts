@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase';
 import { getCurrentUserId } from '../culture/mobileServices';
 import { loadBlockedUserIds } from '../safety/accountSafety';
 import { isPresentablePublicUsername, isPublicProfileName } from '../../lib/publicAudienceFilters';
+import { prepareCreatorListings } from '../../lib/creatorListings';
 
 export type CreatorDirectoryTab = 'artist' | 'creator' | 'industry';
 
@@ -19,6 +20,7 @@ export type CreatorDirectoryEntry = {
   city: string | null;
   country: string | null;
   verified: boolean;
+  isPro: boolean;
   followerCount: number | null;
   following: boolean;
   route: string;
@@ -142,7 +144,8 @@ export async function loadCreatorDirectory(): Promise<CreatorDirectoryEntry[]> {
     loadPublicProfilePages(),
   ]);
   const blockedIds = viewerId ? await loadBlockedUserIds() : new Set<string>();
-  const candidateIds = Array.from(new Set(sourceRows
+  const listedRows = await prepareCreatorListings(sourceRows);
+  const candidateIds = Array.from(new Set(listedRows
     .map(rowIdentity)
     .filter((id): id is string => Boolean(id && !blockedIds.has(id)))));
 
@@ -160,7 +163,7 @@ export async function loadCreatorDirectory(): Promise<CreatorDirectoryEntry[]> {
     );
   }
 
-  const entries = sourceRows.flatMap<CreatorDirectoryEntry>((row) => {
+  const entries = listedRows.flatMap<CreatorDirectoryEntry>((row) => {
     const userId = rowIdentity(row);
     if (!userId || blockedIds.has(userId)) return [];
     const isCreator = row.is_creator === true;
@@ -193,6 +196,7 @@ export async function loadCreatorDirectory(): Promise<CreatorDirectoryEntry[]> {
       city: cleanText(row.city) || cleanText(row.location),
       country,
       verified: row.is_verified === true || row.verified === true,
+      isPro: row.is_pro,
       followerCount: numberOrNull(row.follower_count ?? row.followers_count),
       following: followingIds.has(userId),
       route: username ? `/creator/${encodeURIComponent(username)}` : `/user/${encodeURIComponent(userId)}`,
@@ -200,7 +204,8 @@ export async function loadCreatorDirectory(): Promise<CreatorDirectoryEntry[]> {
   });
 
   return entries.sort((left, right) =>
-    Number(right.verified) - Number(left.verified)
+    Number(right.isPro) - Number(left.isPro)
+    || Number(right.verified) - Number(left.verified)
     || (right.followerCount ?? -1) - (left.followerCount ?? -1)
     || left.displayName.localeCompare(right.displayName, 'en-GB')
     || left.userId.localeCompare(right.userId, 'en-GB'),

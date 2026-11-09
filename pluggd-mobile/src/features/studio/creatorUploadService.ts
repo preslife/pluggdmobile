@@ -1,7 +1,11 @@
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../../lib/supabase';
+import { requireCreatorMonthlyAllowance } from '../../lib/creatorPlanAccess';
 import { uploadFileToSupabaseStorage } from '../../lib/storageUpload';
+import { mixAccessSession, type MixAccessScope } from '../playback/mixAccessSession';
+import { nativeMixMediaPreparation } from './nativeMixMediaPreparation';
+import { nativeMixRevision, NativeMixRevisionError } from './nativeMixRevision';
 
 export type CreatorUploadKind = 'release' | 'beat' | 'mix';
 export type CreatorReleaseAiUseDeclaration = '' | 'none' | 'assisted' | 'generated';
@@ -30,6 +34,7 @@ export type CreatorBeatLicenseInput = {
 };
 
 export type CreatorUploadDraftInput = {
+  plannedMixId?: string;
   kind: CreatorUploadKind;
   title: string;
   creator: string;
@@ -87,9 +92,75 @@ export type CreatorUploadStage = 'artwork' | 'audio' | 'draft' | 'processing';
 export type CreatorUploadResult = {
   catalogId: string;
   trackId: string | null;
-  audioFileId: string;
-  processingStatus: 'processing';
+  audioFileId: string | null;
+  processingStatus: 'processing' | 'ready';
+  recoveryPending?: boolean;
+  current?: boolean;
 };
+
+type UploadActor = { actorId: string; scope: MixAccessScope; assertCurrent: () => void; recoverMix?: boolean };
+
+async function mixTracklist(text: string, mixId: string) {
+  const lines=text.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+  if(lines.length>500) throw new Error('A Mix can contain up to 500 tracklist entries.');
+  let previous=-1;
+  return Promise.all(lines.map(async(line,index)=>{
+    const match=line.match(/^(\d{1,7}):([0-5]\d)(?::([0-5]\d))?\s+(.+)$/);
+    if(!match) throw new Error(`Tracklist line ${index+1}: use 00:00 Artist — Track.`);
+    const start=match[3]===undefined ? Number(match[1])*60+Number(match[2]) : Number(match[1])*3600+Number(match[2])*60+Number(match[3]);
+    if(!Number.isSafeInteger(start)||start>2147483647||start<previous) throw new Error('Put the tracklist timestamps in playback order.');
+    previous=start;
+    const parts=match[4].split(/\s+[—–-]\s+/);
+    const artist=parts.length>1 ? parts.shift()!.trim() : null;
+    const title=parts.join(' — ').trim();
+    if(!title) throw new Error(`Add a track title on line ${index+1}.`);
+    // Stable IDs make a retry the same atomic request, including after restart.
+    const hash=await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256,`${mixId}:${index}:${line}`);
+    return {id:`${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`,
+      start_seconds:start,raw_title:title,raw_artist:artist};
+  }));
+}
+
+async function createProtectedMix(draft: CreatorUploadDraftInput,userId: string,onStage: ((stage:CreatorUploadStage)=>void)|undefined,actor?:UploadActor):Promise<CreatorUploadResult> {
+  if(!actor||actor.actorId!==userId||actor.scope.actor!==userId||!mixAccessSession.current(actor.scope)) throw new NativeMixRevisionError('changed');
+  const check=()=>{actor.assertCurrent();mixAccessSession.assertCurrent(actor.scope);};
+  check();
+  if(!draft.plannedMixId||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(draft.plannedMixId)) {
+    throw new Error('Save this Mix draft on your device before uploading.');
+  }
+  const context={actorId:userId,scope:actor.scope,mixId:draft.plannedMixId,assertCurrent:check};
+  if(actor.recoverMix) {
+    const saved=await nativeMixRevision.resume(context);check();
+    return {catalogId:saved.id,trackId:null,audioFileId:null,processingStatus:'ready',recoveryPending:saved.recoveryPending,current:saved.current};
+  }
+  if(await nativeMixRevision.hasPending(context)) throw new NativeMixRevisionError('pending');
+  // A confirmed save can outlive failed device-draft cleanup. Reopen that
+  // exact owned ID instead of uploading again or creating another Mix.
+  const existing=await (supabase as any).from('mixes').select('id').eq('id',draft.plannedMixId).eq('owner_user_id',userId).maybeSingle();check();
+  if(existing.error)throw new NativeMixRevisionError();
+  if(existing.data?.id===draft.plannedMixId)return {catalogId:draft.plannedMixId,trackId:null,audioFileId:null,processingStatus:'ready',current:false};
+  check();requireCompleteDraft(draft);
+  const bpm=(value:string)=>{
+    if(!value.trim())return null;
+    if(!/^\d+$/.test(value)||Number(value)<1||Number(value)>999)throw new Error('Choose a BPM between 1 and 999.');
+    return Number(value);
+  };
+  const bpmMin=bpm(draft.bpmMin),bpmMax=bpm(draft.bpmMax);
+  if(bpmMin!==null&&bpmMax!==null&&bpmMin>bpmMax)throw new Error('The minimum BPM must not exceed the maximum.');
+  const tracks=await mixTracklist(draft.tracklist,draft.plannedMixId);check();
+  onStage?.('artwork');
+  const artwork=await nativeMixMediaPreparation.prepare({...context,kind:'cover',visibility:draft.visibility,file:draft.artwork});check();
+  onStage?.('audio');
+  const audio=await nativeMixMediaPreparation.prepare({...context,kind:'audio',visibility:draft.visibility,file:draft.audio});check();
+  onStage?.('draft');
+  const saved=await nativeMixRevision.save({...context,create:true,details:{
+    title:draft.title.trim(),description:draft.description.trim()||null,audio_url:audio,cover_url:artwork,
+    visibility:draft.visibility,status:'draft',genre_tags:[draft.genre.trim()],mood_tags:draft.moods.map(value=>value.trim()).filter(Boolean),
+    recording_type:draft.recordingType.trim()||'Studio mix',event_name:draft.eventName.trim()||null,city:draft.city.trim()||null,
+    bpm_min:bpmMin,bpm_max:bpmMax,allow_download:draft.allowDownloads,
+  },tracklist:tracks});check();
+  return {catalogId:saved.id,trackId:null,audioFileId:null,processingStatus:'ready',recoveryPending:saved.recoveryPending,current:saved.current};
+}
 
 type CreatedRows = {
   catalogId?: string;
@@ -239,14 +310,19 @@ function requireCompleteDraft(draft: CreatorUploadDraftInput): asserts draft is 
 export async function createCreatorStudioDraft(
   draft: CreatorUploadDraftInput,
   onStage?: (stage: CreatorUploadStage) => void,
+  actor?: UploadActor,
 ): Promise<CreatorUploadResult> {
-  requireCompleteDraft(draft);
+  if(draft.kind!=='mix') requireCompleteDraft(draft);
 
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('Sign in again before creating a Studio draft.');
+  if(draft.kind==='mix') return createProtectedMix(draft,user.id,onStage,actor);
+  requireCompleteDraft(draft);
+
+  if (draft.kind === 'release') await requireCreatorMonthlyAllowance(user.id, 'release');
 
   const rows: CreatedRows = { trackIds: [], audioFileIds: [] };
   const objects: UploadedObject[] = [];
@@ -440,31 +516,6 @@ export async function createCreatorStudioDraft(
         .single();
       if (beatError || !beat?.id) throw beatError || new Error('Beat draft was not created.');
       rows.catalogId = String(beat.id);
-    } else {
-      const { data: mix, error: mixError } = await db
-        .from('mixes')
-        .insert({
-          owner_user_id: user.id,
-          title: draft.title.trim(),
-          description: [draft.description.trim(), draft.tracklist.trim()].filter(Boolean).join('\n\n') || null,
-          cover_url: artworkUrl,
-          audio_url: streamUrl,
-          audio_file_id: rows.audioFileIds[0],
-          visibility: draft.visibility,
-          status: 'draft',
-          genre_tags: [draft.genre.trim()],
-          mood_tags: draft.moods.map((value) => value.trim()).filter(Boolean),
-          recording_type: draft.recordingType.trim() || 'Studio mix',
-          event_name: draft.eventName.trim() || null,
-          city: draft.city.trim() || null,
-          bpm_min: draft.bpmMin ? Number(draft.bpmMin) : null,
-          bpm_max: draft.bpmMax ? Number(draft.bpmMax) : null,
-          allow_download: draft.allowDownloads,
-        })
-        .select('id')
-        .single();
-      if (mixError || !mix?.id) throw mixError || new Error('Mix draft was not created.');
-      rows.catalogId = String(mix.id);
     }
 
     onStage?.('processing');

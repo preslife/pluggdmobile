@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { RecoveryState } from '../../components/ContentUI';
 import { PluggdImage } from '../../src/components/PluggdImage';
 import { impactHaptic } from '../../src/design/haptics';
@@ -222,6 +222,7 @@ export default function ProductDetailRoute() {
         body: {
           productId: product.id,
           productSource: product.source,
+          platform: Platform.OS,
           quantity,
           storefront: policy.storefront,
           requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,

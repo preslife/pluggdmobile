@@ -27,6 +27,7 @@ import {
   type TextProps,
   View,
 } from 'react-native';
+import { useAuth } from '../../context/AuthProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { selectionHaptic } from '../../design/haptics';
@@ -745,6 +746,12 @@ function TotalsBar({ totals }: { totals: ReturnType<typeof localTotals> }) {
 }
 
 export function SplitAgreementScreen() {
+  const { user } = useAuth();
+  return <SplitAgreementContent key={user?.id ?? 'guest'} />;
+}
+
+function SplitAgreementContent() {
+  const { user } = useAuth();
   const params = useLocalSearchParams<{ id?: string }>();
   const agreementId = String(params.id ?? '');
   const router = useRouter();
@@ -755,9 +762,9 @@ export function SplitAgreementScreen() {
   const [saving, setSaving] = useState(false);
 
   const query = useQuery({
-    queryKey: splitDetailKey(agreementId),
+    queryKey: [...splitDetailKey(agreementId), user?.id ?? 'guest'],
     queryFn: () => loadSplitDetail(agreementId),
-    enabled: agreementId.length > 0,
+    enabled: Boolean(user?.id) && agreementId.length > 0,
     staleTime: 1000 * 15,
   });
 

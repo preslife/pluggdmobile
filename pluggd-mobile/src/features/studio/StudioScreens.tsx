@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -2438,6 +2438,7 @@ function createStudioAnalyticsPreview(range: StudioAnalyticsRange): StudioAnalyt
     return { date: date.toISOString().slice(0, 10), plays: 0, revenueCents: 0, engagement: 0, newFollowers: 0 };
   });
   return {
+    audienceAccess: true,
     range,
     points,
     summary: { plays: 0, revenueCents: 0, engagement: 0, activeMembers: 0, totalFollowers: 0, newFollowers: 0, trackedSaves: 0, cardViews: 0 },
@@ -2448,28 +2449,41 @@ function createStudioAnalyticsPreview(range: StudioAnalyticsRange): StudioAnalyt
 }
 
 function StudioAnalyticsContent({ data, query }: { data: StudioData; query: ReturnType<typeof useStudioQuery> }) {
+  const router = useRouter();
   const theme = usePluggdTheme();
   const [range, setRange] = useState<StudioAnalyticsRange>(30);
   const [metric, setMetric] = useState<AnalyticsTrendKey>('plays');
   const [overview, setOverview] = useState<StudioAnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const analyticsRequest = useRef(0);
 
   const refreshAnalytics = async () => {
+    const request = ++analyticsRequest.current;
     setLoading(true);
+    setOverview(null);
     setLoadError(null);
     if (__DEV__ && data.userId === 'studio-preview') {
       setOverview(createStudioAnalyticsPreview(range));
       setLoading(false);
       return;
     }
-    try { setOverview(await loadStudioAnalytics(range)); }
-    catch (error: any) { setLoadError(error?.message || 'Creator analytics could not be loaded.'); }
-    finally { setLoading(false); }
+    try {
+      const next = await loadStudioAnalytics(range);
+      if (request === analyticsRequest.current) setOverview(next);
+    }
+    catch (error: any) {
+      if (request === analyticsRequest.current) setLoadError(error?.message || 'Creator analytics could not be loaded.');
+    }
+    finally { if (request === analyticsRequest.current) setLoading(false); }
   };
 
-  useEffect(() => { void refreshAnalytics(); }, [range]);
+  useEffect(() => {
+    void refreshAnalytics();
+    return () => { analyticsRequest.current += 1; };
+  }, [range, data.userId]);
 
+  const visibleMetric = overview?.audienceAccess || metric === 'plays' || metric === 'revenueCents' ? metric : 'plays';
   const total = Math.max(1, data.stats.catalogCount);
   return (
     <StudioShell active="analytics" title="Insights" data={data} refreshing={query.isRefetching || loading} onRefresh={() => { void query.refetch(); void refreshAnalytics(); }}>
@@ -2478,19 +2492,19 @@ function StudioAnalyticsContent({ data, query }: { data: StudioData; query: Retu
         {([7, 30, 90] as StudioAnalyticsRange[]).map((value) => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: range === value }} onPress={() => setRange(value)} style={[styles.analyticsRange, range === value && { backgroundColor: theme.colors.accentFill }]}><Text style={[styles.analyticsRangeText, { color: range === value ? theme.colors.onAccent : theme.colors.textMuted }, range === value && styles.analyticsRangeTextActive]}>{value} days</Text></Pressable>)}
       </View>
 
-      {loading && !overview ? <View style={[styles.analyticsState, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><ActivityIndicator color={theme.colors.accent} /><Text style={[styles.analyticsStateText, { color: theme.colors.textMuted }]}>Loading your insights…</Text></View> : loadError ? <View style={[styles.analyticsState, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><MaterialIcons name="error-outline" size={34} color={theme.colors.danger} /><Text style={[styles.analyticsStateTitle, { color: theme.colors.text }]}>Insights unavailable</Text><Text style={[styles.analyticsStateText, { color: theme.colors.textMuted }]}>{loadError}</Text><Pressable accessibilityRole="button" accessibilityLabel="Retry loading Studio insights" style={[styles.analyticsRetry, { backgroundColor: theme.colors.accentFill }]} onPress={() => void refreshAnalytics()}><Text style={[styles.analyticsRetryText, { color: theme.colors.onAccent }]}>Try again</Text></Pressable></View> : overview ? <>
+      {loading && !overview ? <View style={[styles.analyticsState, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><ActivityIndicator color={theme.colors.accent} /><Text style={[styles.analyticsStateText, { color: theme.colors.textMuted }]}>Loading your insights…</Text></View> : loadError ? <View style={[styles.analyticsState, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><MaterialIcons name="error-outline" size={34} color={theme.colors.danger} /><Text style={[styles.analyticsStateTitle, { color: theme.colors.text }]}>Insights unavailable</Text><Text style={[styles.analyticsStateText, { color: theme.colors.textMuted }]}>{loadError}</Text><Pressable accessibilityRole="button" accessibilityLabel="Retry loading Studio insights" style={[styles.analyticsRetry, { backgroundColor: theme.colors.accentFill }]} onPress={() => void refreshAnalytics()}><Text style={[styles.analyticsRetryText, { color: theme.colors.onAccent }]}>Try again</Text></Pressable>{loadError.startsWith('Available on') ? <Pressable accessibilityRole="button" accessibilityLabel="View PLUGGD plans" onPress={() => router.push('/plans')} style={styles.analyticsRetry}><Text style={[styles.analyticsRetryText, { color: theme.colors.accentText }]}>View plans</Text></Pressable> : null}</View> : overview ? <>
         <View style={styles.analyticsMetricGrid}>
           <View style={styles.analyticsMetricRow}><AnalyticsMetric label="Plays" value={formatCompact(overview.summary.plays)} detail={`in ${range} days`} icon="graphic-eq" /><AnalyticsMetric label="Revenue" value={formatPounds(overview.summary.revenueCents)} detail="recorded creator revenue" icon="paid" /></View>
-          <View style={styles.analyticsMetricRow}><AnalyticsMetric label="Followers" value={formatCompact(overview.summary.totalFollowers)} detail={`+${formatCompact(overview.summary.newFollowers)} in range`} icon="groups" /><AnalyticsMetric label="Engagement" value={formatCompact(overview.summary.engagement)} detail="likes and comments" icon="favorite" /></View>
-          <View style={styles.analyticsMetricRow}><AnalyticsMetric label="Tracked saves" value={formatCompact(overview.summary.trackedSaves)} detail="supported catalogue saves" icon="bookmark" /><AnalyticsMetric label="Card views" value={formatCompact(overview.summary.cardViews)} detail="Connect Card views" icon="visibility" /></View>
+          {overview.audienceAccess ? <View style={styles.analyticsMetricRow}><AnalyticsMetric label="Followers" value={formatCompact(overview.summary.totalFollowers)} detail={`+${formatCompact(overview.summary.newFollowers)} in range`} icon="groups" /><AnalyticsMetric label="Engagement" value={formatCompact(overview.summary.engagement)} detail="likes and comments" icon="favorite" /></View> : null}
+          {overview.audienceAccess ? <View style={styles.analyticsMetricRow}><AnalyticsMetric label="Tracked saves" value={formatCompact(overview.summary.trackedSaves)} detail="supported catalogue saves" icon="bookmark" /><AnalyticsMetric label="Card views" value={formatCompact(overview.summary.cardViews)} detail="Connect Card views" icon="visibility" /></View> : null}
         </View>
 
-        <View><SectionTitle title="Movement" /><View style={styles.analyticsTrendTabs}>{ANALYTICS_TRENDS.map((item) => <Pressable key={item.id} accessibilityRole="tab" accessibilityState={{ selected: metric === item.id }} onPress={() => setMetric(item.id)} style={[styles.analyticsTrendTab, { borderColor: metric === item.id ? theme.colors.borderAccent : theme.colors.border, backgroundColor: metric === item.id ? theme.colors.accentSoft : theme.colors.surface }]}><Text style={[styles.analyticsTrendTabText, { color: metric === item.id ? theme.colors.accent : theme.colors.textMuted }, metric === item.id && styles.analyticsTrendTabTextActive]}>{item.label}</Text></Pressable>)}</View><AnalyticsTrend overview={overview} metric={metric} /></View>
+        <View><SectionTitle title="Movement" /><View style={styles.analyticsTrendTabs}>{ANALYTICS_TRENDS.filter((item) => overview.audienceAccess || item.id === 'plays' || item.id === 'revenueCents').map((item) => <Pressable key={item.id} accessibilityRole="tab" accessibilityState={{ selected: metric === item.id }} onPress={() => setMetric(item.id)} style={[styles.analyticsTrendTab, { borderColor: metric === item.id ? theme.colors.borderAccent : theme.colors.border, backgroundColor: metric === item.id ? theme.colors.accentSoft : theme.colors.surface }]}><Text style={[styles.analyticsTrendTabText, { color: metric === item.id ? theme.colors.accent : theme.colors.textMuted }, metric === item.id && styles.analyticsTrendTabTextActive]}>{item.label}</Text></Pressable>)}</View><AnalyticsTrend overview={overview} metric={visibleMetric} /></View>
 
-        <View><SectionTitle title="Audience" /><View style={[styles.analyticsAudienceCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+        {overview.audienceAccess ? <View><SectionTitle title="Audience" /><View style={[styles.analyticsAudienceCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
           <View style={styles.analyticsAudienceRow}><View><Text style={[styles.analyticsAudienceValue, { color: theme.colors.text }]}>{overview.audience.retention30d == null ? '—' : `${overview.audience.retention30d}%`}</Text><Text style={[styles.analyticsAudienceLabel, { color: theme.colors.textSubtle }]}>30-DAY RETENTION</Text></View><View><Text style={[styles.analyticsAudienceValue, { color: theme.colors.text }]}>{overview.audience.newFans30d == null ? '—' : formatCompact(overview.audience.newFans30d)}</Text><Text style={[styles.analyticsAudienceLabel, { color: theme.colors.textSubtle }]}>NEW FANS · 30D</Text></View><View><Text style={[styles.analyticsAudienceValue, { color: theme.colors.text }]}>{overview.audience.churn30d == null ? '—' : formatCompact(overview.audience.churn30d)}</Text><Text style={[styles.analyticsAudienceLabel, { color: theme.colors.textSubtle }]}>CHURN · 30D</Text></View></View>
           {overview.audience.topRegions.length ? <View style={[styles.analyticsRegions, { borderTopColor: theme.colors.border }]}><Text style={[styles.analyticsEyebrow, { color: theme.colors.accent }]}>TOP REGIONS</Text>{overview.audience.topRegions.map((region) => <View key={region.label} style={[styles.analyticsRegion, { borderBottomColor: theme.colors.border }]}><Text style={[styles.analyticsRegionLabel, { color: theme.colors.textMuted }]}>{region.label}</Text><Text style={[styles.analyticsRegionValue, { color: theme.colors.text }]}>{formatCompact(region.value)}</Text></View>)}</View> : <View style={[styles.analyticsEmptyInline, { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.border }]}><MaterialIcons name="public" size={20} color={theme.colors.textMuted} /><Text style={[styles.analyticsEmptyText, { color: theme.colors.textMuted }]}>Regional audience data will appear when verified metrics are available.</Text></View>}
-        </View></View>
+        </View></View> : <View style={[styles.analyticsEmptyInline, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}><MaterialIcons name="insights" size={22} color={theme.colors.accent} /><Text style={[styles.analyticsEmptyText, { color: theme.colors.textMuted }]}>Audience insights are available on Creator or above.</Text><Pressable accessibilityRole="button" accessibilityLabel="View PLUGGD plans" onPress={() => router.push('/plans')} style={styles.analyticsRetry}><Text style={[styles.analyticsRetryText, { color: theme.colors.accentText }]}>View plans</Text></Pressable></View>}
 
         {!overview.hasMetrics ? <View style={[styles.analyticsEmptyInline, { backgroundColor: theme.colors.surfaceStrong, borderColor: theme.colors.border }]}><MaterialIcons name="query-stats" size={22} color={theme.colors.accent} /><Text style={[styles.analyticsEmptyText, { color: theme.colors.textMuted }]}>No verified activity exists in this window yet. Your real data will appear here as people listen, follow, save and view your work.</Text></View> : null}
         {overview.coverageNotes.length ? <View style={[styles.analyticsCoverage, { backgroundColor: theme.colors.surface, borderColor: theme.colors.borderAccent }]}><Text style={[styles.analyticsCoverageTitle, { color: theme.colors.accent }]}>PARTIAL DATA</Text><Text style={[styles.analyticsCoverageText, { color: theme.colors.textMuted }]}>{Array.from(new Set(overview.coverageNotes)).join(' ')}</Text></View> : null}

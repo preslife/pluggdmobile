@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { releaseAgeCatalog } from './fixtures/releaseAgeCatalog.mjs';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
@@ -7,7 +8,7 @@ const ts = require('typescript');
 function load(path, mocks) {
   const module = { exports: {} };
   const code = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  vm.runInNewContext(code, { module, exports: module.exports, require: name => mocks[name] ?? require(name), fetch: (...args) => http(...args), process, URL, AbortController, Uint8Array, Date, Map, Set, JSON, Error }, { filename: path });
+  vm.runInNewContext(code, { module, exports: module.exports, require: name => mocks[name] ?? require(name), fetch: (...args) => http(...args), process, URL, AbortController, Uint8Array, Date, Map, Set, JSON, Error, setTimeout, clearTimeout }, { filename: path });
   return module.exports;
 }
 let http = () => { throw new Error('Unexpected request'); };
@@ -61,19 +62,22 @@ const db = {
       if (prepareLost) { prepareLost = false; return { data: null, error: { message: 'Lost response' } }; }
       return { data: 'job', error: null };
     }
-    return { data: [track], error: null };
+    return { data: name === 'get_post_music_summaries' ? [{ ...track, post_id: postId }] : [track], error: null };
   },
-  from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: { status }, error: null }) }) }) }),
+  from: (...args) => args[0] === 'social_music_render_jobs' ? ({ select: () => ({ eq: () => ({ single: async () => ({ data: { status }, error: null }) }) }) }) : ageCatalog.from(...args),
   storage: { from: () => ({
     list: async () => { calls.list++; return { data: [{ name: 'source.jpg', metadata: { size: 10 } }], error: null }; },
     createSignedUrl: async () => ({ data: { signedUrl: 'https://qa.example/preview.mp4' }, error: null }),
   }) },
 };
+const ageCatalog = releaseAgeCatalog({ session: () => signed ? { user: { id: actorId } } : null,
+  releaseRows: [{ id: 'release', user_id: 'owner', explicit: false }], trackRows: [{ id: 'track', release_id: 'release', explicit: false }] });
+const age = load('../src/features/playback/releaseAgeAccess.ts', { 'expo-crypto': { randomUUID: () => `age-${++uuid}` }, '../../lib/supabase': { supabase: db } });
 const service = load('../src/features/social-music/service.ts', {
   '@react-native-async-storage/async-storage': { default: storage, __esModule: true },
   'expo-crypto': { randomUUID: () => `request-${++uuid}` },
   'expo-file-system': { File, Directory, Paths: { cache: 'cache', document: 'documents' } },
-  '../../lib/supabase': { supabase: db }, './model': model,
+  '../../lib/supabase': { supabase: db }, './model': model, '../playback/releaseAgeAccess': age,
   '../../lib/storageUpload': { uploadFileToSupabaseStorage: async () => { calls.uploads++; if (uploadLost) throw new Error('Lost upload response'); } },
 });
 http = async (url, options) => {

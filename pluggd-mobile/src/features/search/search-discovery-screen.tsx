@@ -1,4 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import { prepareCreatorListings } from '../../lib/creatorListings';
 import { pluggdFonts } from '../../design/typography';
 import { edFonts } from '../../design/editorial';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -467,6 +469,7 @@ function ProfileRow({ profile, userMode = false }: { profile: ProfileItem; userM
       subtitle={profileSubtitle(profile)}
       imageUrl={profile.avatar_url}
       icon={userMode ? 'person' : 'verified'}
+      rightLabel={profile.is_pro ? 'Pro' : undefined}
       onPress={() => router.push(profileRoute(profile) as any)}
     />
   );
@@ -618,6 +621,7 @@ function ResultSection({
 }
 
 export function SearchDiscoveryScreen() {
+  const { user } = useAuth();
   const theme = usePluggdTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -646,7 +650,23 @@ export function SearchDiscoveryScreen() {
   const discoveryCommunities = backstage.data?.communities ?? [];
   const discoveryLive = live.data ?? [];
 
-  const results = search.data;
+  const creatorListings = useQuery({
+    queryKey: ['search-creator-listings', user?.id, normalized, search.dataUpdatedAt],
+    enabled: Boolean(search.data),
+    queryFn: async () => {
+      const [creators, users] = await Promise.all([
+        prepareCreatorListings(search.data?.creators ?? []),
+        prepareCreatorListings(search.data?.users ?? []),
+      ]);
+      return { creators, users };
+    },
+    staleTime: 60_000,
+  });
+  const results = useMemo(() => search.data ? {
+    ...search.data,
+    creators: creatorListings.data?.creators ?? [],
+    users: creatorListings.data?.users ?? [],
+  } : undefined, [search.data, creatorListings.data]);
   const totals = useMemo(() => {
     if (!results) return 0;
     return (
@@ -678,6 +698,7 @@ export function SearchDiscoveryScreen() {
     void backstage.refetch();
     void live.refetch();
     if (hasSearch) void search.refetch();
+    if (hasSearch) void creatorListings.refetch();
   };
 
   const show = (filter: SearchFilter, count?: number) => activeFilter === 'Top' || activeFilter === filter || Boolean(count && activeFilter === filter);
@@ -765,7 +786,9 @@ export function SearchDiscoveryScreen() {
           <PremiumSkeleton compact label="Searching PLUGGD..." style={[styles.loadingBlock, { borderColor: theme.colors.border, backgroundColor: theme.colors.surface }]} />
         ) : null}
 
-        {hasSearch && !search.isLoading && totals === 0 ? (
+        {hasSearch && creatorListings.isError ? <EmptyBlock title="Creator listings unavailable." body="Pull to refresh and try again." /> : null}
+
+        {hasSearch && !search.isLoading && !creatorListings.isLoading && !creatorListings.isError && totals === 0 ? (
           <EmptyBlock title="No results yet." body="Try another artist, track, city, event, community, beat or fan handle." />
         ) : null}
 

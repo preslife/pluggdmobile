@@ -37,7 +37,7 @@ export const PLATFORM_PLANS: PlatformPlanDefinition[] = [
     commissionRate: 20,
     commission: '20% platform commission',
     summary: 'Start your catalogue and build your PLUGGD presence.',
-    features: ['Basic creator profile', 'Community access & social feed', 'Basic live streaming', 'Standard licensing templates'],
+    features: ['Creator profile and hub page', '5 beat uploads and 5 releases a month', 'Sell beats and releases', 'Tips and booking requests', 'Live streaming, mixes and soundboards', 'Free events with RSVP'],
   },
   {
     tier: 'starter',
@@ -49,7 +49,7 @@ export const PLATFORM_PLANS: PlatformPlanDefinition[] = [
     commissionRate: 12.5,
     commission: '12.5% platform commission',
     summary: 'Open your catalogue and start selling without upload caps.',
-    features: ['Unlimited beat uploads', 'Unlimited releases', 'Active beat store', 'Sell sample packs', 'Basic analytics', 'Basic live streaming'],
+    features: ['Unlimited beats and releases', 'Sell sample packs', 'Import your catalogue', 'Sales and plays analytics', 'Rights spreadsheet exports', 'Unlimited collaboration posts'],
   },
   {
     tier: 'creator',
@@ -61,7 +61,7 @@ export const PLATFORM_PLANS: PlatformPlanDefinition[] = [
     commissionRate: 5,
     commission: '5% platform commission',
     summary: 'Grow your audience and operate with professional creator tools.',
-    features: ['Advanced live streaming', 'Full analytics', 'Host events', 'Private collaboration tools', 'Verified badge'],
+    features: ['Sell event tickets', 'Fan memberships', 'Crowdfunding', 'Sell merch', 'Fan contacts and email campaigns', 'Full analytics', 'Scheduled releases', 'Verified badge after payout setup', 'Creator fund share'],
     featured: true,
   },
   {
@@ -74,7 +74,7 @@ export const PLATFORM_PLANS: PlatformPlanDefinition[] = [
     commissionRate: 0,
     commission: '0% platform commission',
     summary: 'Operate at full scale with PLUGGD’s deepest creator stack.',
-    features: ['Everything in Creator', 'Unlimited creator tools', 'Full analytics & exports', 'Featured listings', 'Private collaborations', 'Availability calendar'],
+    features: ['0% commission', 'Store on your own web address', 'Priority placement', 'Priority support', 'Label Studio', 'Custom licence templates', 'Fan contacts export', 'API access'],
   },
 ];
 

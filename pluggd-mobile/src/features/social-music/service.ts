@@ -4,6 +4,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { supabase } from '../../lib/supabase';
 import { uploadFileToSupabaseStorage } from '../../lib/storageUpload';
 import { MAX_MEDIA_BYTES, MAX_MUSIC_SECONDS, type MusicDraft, type MusicMedia, type MusicTrack, type PostMusic } from './model';
+import { assertReleaseAccess, assertReleaseGrantCurrent } from '../playback/releaseAgeAccess';
 import type { MobileSocialDestinationInput } from '../culture/mobileTypes';
 
 const db = supabase as any;
@@ -70,6 +71,8 @@ export type MusicAudition = { uri: string; waveform: number[]; trackDuration: nu
 export async function loadMusicAudition(trackId: string, startSeconds: number, durationSeconds: number, signal?: AbortSignal): Promise<MusicAudition> {
   const actor = await musicSession();
   await assertMusicSession(actor, signal);
+  const access = await assertReleaseAccess({ trackId });
+  await assertMusicSession(actor, signal);
   const response = await fetch(`${API_ORIGIN}/api/social-music-preview`, {
     method: 'POST', signal,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${actor.token}` },
@@ -91,6 +94,7 @@ export async function loadMusicAudition(trackId: string, startSeconds: number, d
     throw new Error('Could not load the sound timeline. Please try again.');
   }
   await assertMusicSession(actor, signal);
+  await assertReleaseGrantCurrent(access);
   previews.create({ idempotent: true, intermediates: true });
   const file = new File(previews, `${Crypto.randomUUID()}.mp3`);
   file.write(bytes);
@@ -240,11 +244,21 @@ export async function publishMusicDraft(draft: MusicDraft, signal?: AbortSignal)
 export async function musicPlayback(postId: string, signal?: AbortSignal) {
   const actor = await musicSession(undefined, false);
   await assertMusicSession(actor, signal);
+  // Read canonical post-to-song attribution, then the current song/parent
+  // policy. Caller-supplied attribution and public playback URLs are not proof.
+  const { data: summaries, error: summaryError } = await db.rpc('get_post_music_summaries', { p_post_ids: [postId] });
+  await assertMusicSession(actor, signal);
+  const summary = summaries?.find((row: PostMusic) => row.post_id === postId);
+  if (summaryError || !summary?.release_id || !summary.track_id) throw new Error('This music video is unavailable. Please try again.');
+  const access = await assertReleaseAccess({ releaseId: summary.release_id, trackId: summary.track_id });
+  await assertMusicSession(actor, signal);
+  await assertReleaseGrantCurrent(access);
   // Anonymous requests use the stable endpoint; the server rechecks public access.
   if (!actor.token) return `${API_ORIGIN}/api/social-music-playback?postId=${encodeURIComponent(postId)}`;
   const result = await api('social-music-playback', { postId }, signal, actor);
   const storageOrigin = process.env.EXPO_PUBLIC_SUPABASE_URL?.replace(/\/+$/, '');
   if (!storageOrigin || !result.url || !result.url.startsWith(`${storageOrigin}/storage/v1/object/sign/social-music-published/`)) throw new Error('Video playback is unavailable.');
+  await assertReleaseGrantCurrent(access);
   return result.url;
 }
 export async function postMusicSummaries(ids: string[]): Promise<Map<string, PostMusic>> {

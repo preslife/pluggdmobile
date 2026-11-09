@@ -446,6 +446,8 @@ export async function resolveMobileFeedAttachment(input: {
       (supabase as any)
         .from('mixes')
         .select('id,slug,title,cover_url,city')
+        .eq('status', 'published')
+        .eq('visibility', 'public')
         .or(`id.eq.${input.mixId},slug.eq.${input.mixId}`)
         .maybeSingle(),
     );
@@ -739,6 +741,18 @@ function mapPlaylist(row: any, owner?: ProfileItem | null, tracks?: PlaylistTrac
 
 function mapPlaylistTrack(row: any, release?: ReleaseItem | null, beat?: BeatItem | null, mix?: MixItem | null): PlaylistTrack {
   const id = String(row.id || row.release_id || row.beat_id || row.mix_id);
+  // Playlist item snapshots are not authority for Mix metadata or audio.
+  // An unavailable public projection retains only its identity/detail route;
+  // that screen can request fresh owner/capability access without persistence.
+  if (row.mix_id) {
+    return {
+      id, playlist_id: row.playlist_id, release_id: null, beat_id: null, mix_id: row.mix_id,
+      position: row.position ?? row.sort_order ?? null, added_at: row.added_at || row.created_at || null,
+      title: mix?.title || 'Mix unavailable', creator: mix?.city || null,
+      image_url: mix?.cover_url || null, audio_url: mix?.audio_url || null,
+      route: `/mixes/${mix?.id || row.mix_id}`,
+    };
+  }
   const sourceTitle = release?.title || beat?.title || mix?.title || row.title || 'Untitled track';
   const creator = release?.artist || beat?.producer_name || mix?.city || row.artist || row.creator_name || null;
   const image = release?.cover_art_url || beat?.image_url || mix?.cover_url || row.image_url || row.cover_url || null;
@@ -1355,6 +1369,8 @@ async function loadPlaylistTracks(playlistId: string): Promise<PlaylistTrack[]> 
           (supabase as any)
             .from('mixes')
             .select('id,slug,title,description,cover_url,audio_url,duration_seconds,city,genre_tags,mood_tags,recording_type,event_name,like_count,repost_count,save_count,play_count,published_at,created_at')
+            .eq('status', 'published')
+            .eq('visibility', 'public')
             .in('id', mixIds),
         )
       : Promise.resolve([]),
@@ -3305,6 +3321,7 @@ export async function addComment(postId: string, content: string) {
 }
 
 export async function createSocialPost(input: {
+  expectedActorId?: string;
   content: string;
   title?: string | null;
   postType?: string | null;
@@ -3324,6 +3341,7 @@ export async function createSocialPost(input: {
       ? [{ destination_type: 'creator_community', destination_id: input.communityId }]
       : undefined;
   return createMobileSocialPost({
+    expectedActorId: input.expectedActorId,
     content: input.title ? `${input.title.trim()}\n\n${input.content}` : input.content,
     postType: input.postType === 'thread' ? 'discussion' : input.postType,
     destinations,
@@ -3369,6 +3387,10 @@ export async function loadCreatorModePulse(userId: string): Promise<CreatorModeP
 function routeForNotificationData(row: any) {
   const relatedId = row.related_id || row.target_id || row.entity_id || row.data?.id || null;
   const relatedType = String(row.related_type || row.target_type || row.entity_type || row.type || '').toLowerCase();
+  if (relatedType === 'split_approval' || row.type === 'split_approval') {
+    const approvalId = row.payload?.approval_id || row.data?.approval_id || relatedId;
+    return typeof approvalId === 'string' ? `/split/approve/${encodeURIComponent(approvalId)}` : null;
+  }
   if (!relatedId) return null;
   if (relatedType.includes('event') || relatedType.includes('ticket')) return `/events/${relatedId}`;
   if (relatedType.includes('release') || relatedType.includes('track')) return `/release/${relatedId}`;

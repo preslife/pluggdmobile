@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { prepareCreatorListings } from './creatorListings';
 import type { PluggdTrack, PluggdTrackKind } from '../context/PlaybackProvider';
 import { canShowSensitiveContent, loadSafetySettings } from '../features/safety/accountSafety';
 
@@ -195,6 +196,7 @@ export type SoundboardContentItem = {
 };
 
 export type ProfileItem = {
+  is_pro?: boolean;
   user_id: string | null;
   id?: string | null;
   display_name?: string | null;
@@ -547,13 +549,13 @@ export async function loadFeedBundle(limit = 8): Promise<FeedBundle> {
         .select('user_id,id,full_name,username,avatar_url,user_type,profile_type,is_creator,is_verified,city')
         .or('is_creator.eq.true,user_type.in.(artist,producer,industry)')
         .limit(limit),
-    ).then((rows) =>
+    ).then((rows) => prepareCreatorListings(
       rows.map((profile) => ({
         ...profile,
         display_name: null,
         primary_genre: null,
       })),
-    ),
+    )).catch(() => []),
     list<any>(
       (supabase as any)
         .from('social_posts')

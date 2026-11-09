@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/context/AuthProvider';
@@ -17,6 +17,7 @@ import type { MobileFeedAttachment } from '../src/features/community-feed/commun
 import {
   buildMobileFeedAttachmentLinkPreview,
   createSocialPost,
+  loadPostDetail,
   resolveMobileFeedAttachment,
   uploadSocialMediaAsset,
 } from '../src/features/culture/mobileServices';
@@ -61,12 +62,22 @@ const SUPPORTED_POST_TYPES = new Set([
 ]);
 
 export default function CreatePostRoute() {
+  const { user } = useAuth();
+  return <CreatePostComposer key={user?.id ?? 'guest'} />;
+}
+
+function CreatePostComposer() {
   const theme = usePluggdTheme();
   const styles = useCreatePostStyles();
   const bottomInset = useBottomChromeInset();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const actor = useRef({ id: user?.id, token: session?.access_token });
+  actor.current = { id: user?.id, token: session?.access_token };
+  const mounted = useRef(true);
+  const publishPending = useRef(false);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const profile = useQuery({
     queryKey: ['profile', 'composer', user?.id],
     enabled: Boolean(user?.id),
@@ -107,7 +118,17 @@ export default function CreatePostRoute() {
   const requestedType = typeof params.type === 'string' && SUPPORTED_POST_TYPES.has(params.type) ? params.type : 'post';
   const postType = requestedType;
   const isPoll = postType === 'poll';
-  const label = useMemo(() => labelForType(postType), [postType]);
+  const label = useMemo(() => params.quotePostId ? 'Quote post' : labelForType(postType), [postType, params.quotePostId]);
+  const quote = useQuery({
+    queryKey: ['quote-post', user?.id, params.quotePostId],
+    enabled: Boolean(params.quotePostId && user),
+    queryFn: async () => {
+      if (typeof params.quotePostId !== 'string' || !/^[0-9a-f-]{36}$/i.test(params.quotePostId)) throw new Error('This post is unavailable to quote.');
+      const detail = await loadPostDetail(params.quotePostId);
+      if (!detail.post) throw new Error('This post is no longer available to quote.');
+      return detail.post;
+    },
+  });
   const destinations = useMemo(() => {
     const rows: Array<{ destination_type: any; destination_id: string }> = [];
     if (params.communityId) rows.push({ destination_type: 'creator_community', destination_id: String(params.communityId) });
@@ -137,11 +158,13 @@ export default function CreatePostRoute() {
   const hasAttachmentRequest = Boolean(params.attachmentType);
   const attachmentUnavailable = hasAttachmentRequest && !attachmentLoading && !attachment;
   const submitContent = isPoll ? pollQuestion.trim() : content.trim();
-  const canPublish = isPoll
+  const quoteReady = !params.quotePostId || Boolean(user && quote.data && !quote.isError && !quote.isFetching);
+  const canPublish = quoteReady && (isPoll
     ? pollQuestion.trim().length > 0 && validPollOptions.length >= 2
-    : content.trim().length > 0 || media.length > 0 || Boolean(attachment);
+    : content.trim().length > 0 || media.length > 0 || Boolean(attachment));
   const publish = () => {
-    if (mutation.isPending || !canPublish) return;
+    if (publishPending.current || mutation.isPending || !canPublish) return;
+    publishPending.current = true;
     mutation.mutate();
   };
 
@@ -241,8 +264,14 @@ export default function CreatePostRoute() {
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const expected = actor.current;
+      const check = () => {
+        if (!mounted.current || !expected.id || actor.current.id !== expected.id || actor.current.token !== expected.token) throw new Error('Your account changed. Please try again.');
+      };
+      check();
       const uploaded: Array<{ kind: ComposerMedia['kind']; url: string; durationSeconds?: number | null }> = [];
       for (const item of media) {
+        check();
         const upload = await uploadSocialMediaAsset({
           uri: item.uri,
           fileName: item.fileName,
@@ -250,13 +279,16 @@ export default function CreatePostRoute() {
           folder: 'post',
           quarantine: true,
         });
+        check();
         if (!upload.success || !upload.url) throw new Error(upload.error || 'Media upload failed.');
         uploaded.push({ kind: item.kind, url: upload.url, durationSeconds: item.durationSeconds });
       }
       const images = uploaded.filter((item) => item.kind === 'image').map((item) => item.url);
       const video = uploaded.find((item) => item.kind === 'video');
       const audio = uploaded.find((item) => item.kind === 'audio');
+      check();
       return createSocialPost({
+        expectedActorId: expected.id,
         title: title.trim() || null,
         content: submitContent,
         postType,
@@ -272,6 +304,7 @@ export default function CreatePostRoute() {
       });
     },
     onSuccess: (result) => {
+      if (!mounted.current) return;
       if (!result.success) throw new Error(result.error);
       impactHaptic();
       void queryClient.invalidateQueries({ queryKey: ['community-feed'] });
@@ -287,7 +320,8 @@ export default function CreatePostRoute() {
       if (result.id) router.replace(`/post/${result.id}` as any);
       else router.replace('/community' as any);
     },
-    onError: (error) => Alert.alert('Post failed', error instanceof Error ? error.message : String(error)),
+    onError: (error) => { if (mounted.current) Alert.alert('Post failed', error instanceof Error ? error.message : String(error)); },
+    onSettled: () => { publishPending.current = false; },
   });
 
   return (
@@ -329,6 +363,13 @@ export default function CreatePostRoute() {
         </View>
 
         <View style={styles.card}>
+          {params.quotePostId ? <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, padding: 14, marginBottom: 16 }}>
+            <Text style={[styles.authorName, { marginBottom: 6 }]}>Quoting {quote.data?.display_name || quote.data?.username || 'a Community post'}</Text>
+            {quote.isPending ? <ActivityIndicator accessibilityLabel="Loading quoted post" color={theme.colors.accentText} /> : quote.isError ? <>
+              <Text accessibilityRole="alert" style={{ color: theme.colors.textMuted }}>{quote.error instanceof Error ? quote.error.message : 'The quoted post could not load.'}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Retry loading quoted post" style={{ minHeight: 44, justifyContent: 'center' }} onPress={() => void quote.refetch()}><Text style={{ color: theme.colors.accentText }}>Try again</Text></Pressable>
+            </> : <Text style={{ color: theme.colors.text, lineHeight: 21 }} numberOfLines={4}>{quote.data?.content || 'Photo, video or music post'}</Text>}
+          </View> : null}
           <View style={styles.authorRow}>
             <View style={styles.authorAvatar}>
               {profile.data?.avatar_url ? <PluggdImage uri={profile.data.avatar_url} style={StyleSheet.absoluteFill} resizeMode="cover" /> : <Text style={styles.authorInitial}>{contentInitials(authorName)}</Text>}

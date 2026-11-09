@@ -10,6 +10,7 @@ import {
   Animated,
   Easing,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   Share,
@@ -25,11 +26,15 @@ import { useListeningRoomOrientation } from '../../src/lib/orientation';
 import { edFonts } from '../../src/design/editorial';
 import { getCurrentUserId, toggleSavedContent } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
-import { MixItem, MixTrackItem, formatCompact, formatDuration, toTrack } from '../../src/lib/mobileContent';
+import { MixItem, MixTrackItem, formatCompact, formatDuration } from '../../src/lib/mobileContent';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 import { PlaybackSeekBar } from '../../src/components/PlaybackSeekBar';
+import { mixAccessSession } from '../../src/features/playback/mixAccessSession';
+import { nativeMixTrack } from '../../src/features/playback/protectedMixPlayback';
+import { nativeMixDownload } from '../../src/features/playback/nativeMixDetail';
+import { useMixSessionIdentity, useNativeMixDetail } from '../../src/features/playback/useNativeMixDetail';
+import { currentNativePlaybackIntent, nativePlaybackIntent } from '../../src/features/playback/nativePlaybackControl';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MIX_STARTING_FEEDBACK_MS = 350;
 
 type MixCommentRow = {
@@ -54,18 +59,34 @@ type TrackIdRequestRow = {
 };
 
 export default function MixDetailScreen() {
+  const params = useLocalSearchParams<{ id?: string | string[]; access?: string | string[] }>();
+  const identity = useMixSessionIdentity();
+  const reference = typeof params.id === 'string' ? params.id : Array.isArray(params.id) && params.id.length === 1 ? params.id[0] : '';
+  const accessKey = typeof params.access === 'string' ? params.access : params.access === undefined ? undefined : 'invalid';
+  return <MixDetailContent key={`${identity.key}|${reference}|${accessKey ?? ''}`} reference={reference} accessKey={accessKey} />;
+}
+
+function MixDetailContent({ reference, accessKey }: { reference: string; accessKey?: string }) {
   const theme = usePluggdTheme();
   const styles = useMixStyles();
-  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { playTrack, seekTo, currentTrack, isPlaying, togglePlayPause, progress } = usePlayback();
+  const { playTrack, play, pause, seekTo, currentTrack, isPlaying, togglePlayPause, progress, isBuffering } = usePlayback();
+  const detailState = useNativeMixDetail(reference, accessKey);
+  const envelope = detailState.detail;
+  const mix = envelope?.mix ?? null;
+  const tracklist = envelope?.tracklist ?? [];
+  const loading = detailState.phase === 'loading';
+  const publicMix = envelope?.public === true;
+  const current = useRef(detailState.isCurrent);
+  current.current = detailState.isCurrent;
+  const currentPublic = useRef(publicMix);
+  currentPublic.current = publicMix;
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   // Turning the phone sideways enters the wide listening-room layout.
   useListeningRoomOrientation();
-  const [mix, setMix] = useState<MixItem | null>(null);
-  const [tracklist, setTracklist] = useState<MixTrackItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [startingPlayback, setStartingPlayback] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
@@ -76,140 +97,110 @@ export default function MixDetailScreen() {
   const [commentBusy, setCommentBusy] = useState(false);
   const [requestBusy, setRequestBusy] = useState(false);
   const [roomDataError, setRoomDataError] = useState<string | null>(null);
+  const [socialRetry, setSocialRetry] = useState(0);
+  const [coverFailed, setCoverFailed] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  useEffect(() => { setCoverFailed(false); }, [mix?.cover_url]);
   const vinylRotation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    setComments([]); setTrackIdRequests([]); setProfileNames({}); setRoomDataError(null);
+    if (!mix || !publicMix || !current.current()) return;
     let mounted = true;
+    const scope = mixAccessSession.scope();
+    const active = () => mounted && mixAccessSession.current(scope) && current.current() && currentPublic.current;
     const load = async () => {
-      const lookup = String(id || '').trim();
-      const mixQuery = (supabase as any)
-        .from('mixes')
-        .select('id,slug,title,description,cover_url,audio_url,duration_seconds,city,genre_tags,mood_tags,recording_type,event_name,bpm_min,bpm_max,like_count,repost_count,save_count,play_count,published_at,created_at');
-      const mixRes = await (UUID_PATTERN.test(lookup) ? mixQuery.eq('id', lookup) : mixQuery.eq('slug', lookup)).maybeSingle();
-      const nextMix = mixRes.error ? null : (mixRes.data as MixItem | null);
-      const [trackRes, commentRes, requestRes] = nextMix
-        ? await Promise.all([
-            (supabase as any)
-              .from('mix_tracklist_items')
-              .select('id,mix_id,position,start_seconds,end_seconds,raw_title,raw_artist')
-              .eq('mix_id', nextMix.id)
-              .order('position', { ascending: true }),
-            (supabase as any)
-              .from('mix_comments')
-              .select('id,mix_id,user_id,body,timestamp_seconds,created_at')
-              .eq('mix_id', nextMix.id)
-              .order('created_at', { ascending: false })
-              .limit(60),
-            (supabase as any)
-              .from('mix_track_id_requests')
-              .select('id,mix_id,user_id,timestamp_seconds,note,status,matched_tracklist_item_id,created_at,updated_at')
-              .eq('mix_id', nextMix.id)
-              .order('created_at', { ascending: false })
-              .limit(40),
-          ])
-        : [{ data: [], error: null }, { data: [], error: null }, { data: [], error: null }];
-
-      const commentRows = Array.isArray(commentRes.data) ? commentRes.data as MixCommentRow[] : [];
-      const requestRows = Array.isArray(requestRes.data) ? requestRes.data as TrackIdRequestRow[] : [];
-      const interactionUserIds = Array.from(new Set([
-        ...commentRows.map((row) => row.user_id),
-        ...requestRows.map((row) => row.user_id),
-      ].filter(Boolean)));
-      let nextProfileNames: Record<string, string> = {};
-      if (interactionUserIds.length) {
-        const profileRes = await (supabase as any)
-          .from('profiles')
-          .select('user_id,username,full_name')
-          .in('user_id', interactionUserIds);
-        if (Array.isArray(profileRes.data)) {
-          nextProfileNames = Object.fromEntries(
-            profileRes.data.map((profile: any) => [
-              profile.user_id,
-              profile.full_name?.trim() || profile.username?.trim() || 'PLUGGD listener',
-            ]),
-          );
+      try {
+        const [commentRes, requestRes] = await Promise.all([
+          (supabase as any).from('mix_comments').select('id,mix_id,user_id,body,timestamp_seconds,created_at')
+            .eq('mix_id', mix.id).order('created_at', { ascending: false }).limit(60),
+          (supabase as any).from('mix_track_id_requests').select('id,mix_id,user_id,timestamp_seconds,note,status,matched_tracklist_item_id,created_at,updated_at')
+            .eq('mix_id', mix.id).order('created_at', { ascending: false }).limit(40),
+        ]);
+        if (!active()) return;
+        const commentRows = !commentRes.error && Array.isArray(commentRes.data) ? commentRes.data as MixCommentRow[] : [];
+        const requestRows = !requestRes.error && Array.isArray(requestRes.data) ? requestRes.data as TrackIdRequestRow[] : [];
+        setComments(commentRows); setTrackIdRequests(requestRows);
+        const ids = Array.from(new Set([...commentRows.map(row => row.user_id), ...requestRows.map(row => row.user_id)].filter(Boolean)));
+        let profileError = false;
+        if (ids.length) {
+          const profileRes = await (supabase as any).from('profiles').select('user_id,username,full_name').in('user_id', ids);
+          if (!active()) return;
+          profileError = Boolean(profileRes.error);
+          if (Array.isArray(profileRes.data)) setProfileNames(Object.fromEntries(profileRes.data.map((profile: any) => [profile.user_id,
+            (typeof profile.full_name === 'string' && profile.full_name.trim()) || (typeof profile.username === 'string' && profile.username.trim()) || 'PLUGGD listener'])));
         }
-      }
-
-      if (!mounted) return;
-      setMix(nextMix);
-      setTracklist(
-        Array.isArray(trackRes.data) && nextMix
-          ? (trackRes.data as MixTrackItem[])
-          : [],
-      );
-      setComments(commentRows);
-      setTrackIdRequests(requestRows);
-      setProfileNames(nextProfileNames);
-      setRoomDataError(
-        commentRes.error || requestRes.error
-          ? 'Some live room activity could not be loaded. Audio and tracklist controls remain available.'
-          : null,
-      );
-      setLoading(false);
+        if (active()) setRoomDataError(commentRes.error || requestRes.error || profileError ? 'Some room activity could not load. Audio and tracklist remain available.' : null);
+      } catch { if (active()) setRoomDataError('Room activity could not load. Audio and tracklist remain available.'); }
     };
-    if (id) load();
-    return () => {
-      mounted = false;
-    };
-  }, [id]);
+    void load();
+    return () => { mounted = false; };
+  }, [mix?.id, publicMix, socialRetry]);
 
-  const playMix = async (openFullPlayer = false) => {
-    if (!mix || startingPlayback) return;
-    const track = toTrack(mix, 'mix');
-    if (!track) {
-      const message = 'This mix does not include a playable recording. Try another mix.';
-      setPlaybackError(message);
-      Alert.alert('Mix unavailable', message);
-      return;
-    }
+  const active = () => alive.current && current.current();
+  const activePublic = () => active() && currentPublic.current;
+  const playMix = async (openFullPlayer = false, startAt = 0) => {
+    if (!envelope || startingPlayback || !active()) return null;
     const startedAt = Date.now();
     setPlaybackError(null);
     setStartingPlayback(true);
+    let ticket: number | undefined;
+    const feedback = async () => {
+      const remaining = MIX_STARTING_FEEDBACK_MS - (Date.now() - startedAt);
+      if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining));
+    };
     try {
-      const active = await playTrack(track);
-      const activeIsRequestedMix = Boolean(
-        active &&
-        (active.sourceType === 'mix' || active.type === 'mix') &&
-        (active.mixId === mix.id || active.id === mix.id),
-      );
-      if (!activeIsRequestedMix || !active) throw new Error('mix did not become the active track');
-      const remainingFeedback = MIX_STARTING_FEEDBACK_MS - (Date.now() - startedAt);
-      if (remainingFeedback > 0) await new Promise((resolve) => setTimeout(resolve, remainingFeedback));
-      if (openFullPlayer) {
-        router.push({
-          pathname: '/player',
-          params: {
-            title: active.title,
-            artist: active.artist,
-            cover: active.artwork ?? '',
-          },
-        });
-      }
+      const pending = playTrack(nativeMixTrack(envelope), startAt);
+      ticket = nativePlaybackIntent();
+      const selected = await pending;
+      await feedback();
+      if (!active() || !currentNativePlaybackIntent(ticket)) return null;
+      if (!selected || selected.mixId !== envelope.mix.id) throw new Error('Mix unavailable');
+      if (openFullPlayer) router.push('/player');
+      return selected;
     } catch {
-      const remainingFeedback = MIX_STARTING_FEEDBACK_MS - (Date.now() - startedAt);
-      if (remainingFeedback > 0) await new Promise((resolve) => setTimeout(resolve, remainingFeedback));
+      await feedback();
+      if (!active() || (ticket !== undefined && !currentNativePlaybackIntent(ticket))) return null;
       const message = 'This mix could not start. Check your connection, then tap Play mix to try again.';
       setPlaybackError(message);
-      Alert.alert('Mix unavailable', message);
-    } finally {
-      setStartingPlayback(false);
-    }
+      return null;
+    } finally { if (alive.current) setStartingPlayback(false); }
   };
 
   const saveMix = async () => {
-    if (!mix || saving) return;
+    if (!mix || saving || !activePublic()) return;
+    const scope = mixAccessSession.scope();
     setSaving(true);
-    const result = await toggleSavedContent('mix', mix.id);
-    setSaving(false);
-    Alert.alert(result.success ? (result.saved ? 'Saved' : 'Removed') : 'Save unavailable', result.success ? `${mix.title || 'Mix'} library state updated.` : result.error || 'Please try again.');
+    try {
+      const result = await toggleSavedContent('mix', mix.id);
+      if (!activePublic() || !mixAccessSession.current(scope)) return;
+      Alert.alert(result.success ? (result.saved ? 'Saved' : 'Removed') : 'Save unavailable',
+        result.success ? `${mix.title || 'Mix'} library state updated.` : 'Your library could not be updated. Please try again.');
+    } catch { if (activePublic() && mixAccessSession.current(scope)) Alert.alert('Save unavailable', 'Your library could not be updated. Please try again.'); }
+    finally { if (alive.current) setSaving(false); }
   };
 
   const shareMix = async () => {
-    if (!mix) return;
-    await Share.share({ message: `PLUGGD mix: ${mix.title || 'Untitled mix'}` });
+    if (!mix || !activePublic()) return;
+    try { await Share.share({ message: `PLUGGD mix: ${mix.title || 'Untitled mix'} https://pluggd.fm/mixes/${encodeURIComponent(mix.id)}` }); }
+    catch { if (activePublic()) Alert.alert('Share unavailable', 'Please try sharing this mix again.'); }
   };
 
+  const downloadMix = async () => {
+    if (!envelope || downloading || !active() || (!envelope.owner && !mix?.allow_download)) return;
+    const scope = mixAccessSession.scope();
+    setDownloading(true);
+    try {
+      const result = await nativeMixDownload(envelope);
+      if (!active() || !mixAccessSession.current(scope)) return;
+      await Linking.openURL(result.url);
+      if (active() && mixAccessSession.current(scope)) Alert.alert('Download opened', 'Complete the download in the window that opened.');
+    } catch { if (active() && mixAccessSession.current(scope)) Alert.alert('Download unavailable', 'This download could not open. Check your access and connection, then try again.'); }
+    finally { if (alive.current) setDownloading(false); }
+  };
+  const canDownload = Boolean(envelope && (envelope.owner || mix?.allow_download));
+  const privacyLabel = publicMix ? '' : `${mix?.visibility === 'unlisted' ? 'Unlisted' : 'Private'} mix${mix?.status !== 'published' ? ' · Not published' : ''}`;
+  const reloadCover = () => { setCoverFailed(false); void detailState.retry(); };
   const isThisMixPlaying = Boolean(mix && currentTrack?.mixId === mix.id);
   const playedRatio =
     isThisMixPlaying && progress.duration > 0 ? Math.min(1, progress.position / progress.duration) : 0;
@@ -238,6 +229,7 @@ export default function MixDetailScreen() {
   }, [roomPlaying, vinylRotation]);
 
   const toggleRoomPlayback = () => {
+    if (!active() || startingPlayback) return;
     if (roomPlaying || isThisMixPlaying) {
       void togglePlayPause();
       return;
@@ -245,66 +237,69 @@ export default function MixDetailScreen() {
     void playMix();
   };
 
-  const stopRoomPlayback = () => {
-    if (!isThisMixPlaying) return;
-    void seekTo(0);
-    if (isPlaying) void togglePlayPause();
+  const stopRoomPlayback = async () => {
+    if (!isThisMixPlaying || !active()) return;
+    const stopped = pause();
+    const ticket = nativePlaybackIntent();
+    await stopped;
+    if (active() && currentNativePlaybackIntent(ticket)) await seekTo(0);
   };
 
+  const playAt = async (seconds: number) => {
+    if (!active() || !Number.isFinite(seconds) || seconds < 0) return;
+    if (!isThisMixPlaying) { await playMix(false, seconds); return; }
+    const sought = seekTo(seconds);
+    const ticket = nativePlaybackIntent();
+    await sought;
+    if (!roomPlaying && active() && currentNativePlaybackIntent(ticket)) await play();
+  };
   const seekRoomToRatio = (ratio: number) => {
-    if (!roomDuration) return;
-    if (!isThisMixPlaying) {
-      void playMix().then(() => seekTo(ratio * roomDuration));
-      return;
-    }
-    void seekTo(ratio * roomDuration);
+    if (!active() || !roomDuration) return;
+    const target = Math.max(0, Math.min(1, ratio)) * roomDuration;
+    if (!isThisMixPlaying) { void playMix(false, target); return; }
+    void seekTo(target);
   };
-
   const requestTrackId = async () => {
-    if (!mix || requestBusy) return;
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      Alert.alert('Sign in required', 'Track ID requests are saved to the listening room and require an account.');
-      return;
-    }
+    if (!mix || requestBusy || !activePublic()) return;
+    const scope = mixAccessSession.scope();
     setRequestBusy(true);
-    const { data, error } = await (supabase as any)
-      .from('mix_track_id_requests')
-      .insert({ mix_id: mix.id, user_id: userId, timestamp_seconds: roomSecond, note: null })
-      .select('id,mix_id,user_id,timestamp_seconds,note,status,matched_tracklist_item_id,created_at,updated_at')
-      .single();
-    setRequestBusy(false);
-    if (error || !data) {
-      Alert.alert('Track ID request failed', 'The request could not be saved. Please try again.');
-      return;
-    }
-    setTrackIdRequests((current) => [data as TrackIdRequestRow, ...current]);
-    Alert.alert('Track ID requested', `Saved at ${formatDuration(roomSecond)}.`);
+    try {
+      const userId = await getCurrentUserId();
+      if (!activePublic() || !mixAccessSession.current(scope)) return;
+      if (!userId) { Alert.alert('Sign in required', 'Track ID requests require an account.'); return; }
+      if (scope.actor !== userId) return;
+      const { data, error } = await (supabase as any).from('mix_track_id_requests')
+        .insert({ mix_id: mix.id, user_id: userId, timestamp_seconds: roomSecond, note: null })
+        .select('id,mix_id,user_id,timestamp_seconds,note,status,matched_tracklist_item_id,created_at,updated_at').single();
+      if (!activePublic() || !mixAccessSession.current(scope)) return;
+      if (error || !data) throw new Error();
+      setTrackIdRequests(rows => [data as TrackIdRequestRow, ...rows]);
+      Alert.alert('Track ID requested', `Saved at ${formatDuration(roomSecond)}.`);
+    } catch { if (activePublic() && mixAccessSession.current(scope)) Alert.alert('Track ID request failed', 'The request could not be saved. Please try again.'); }
+    finally { if (alive.current) setRequestBusy(false); }
   };
 
   const postRoomComment = async () => {
-    if (!mix || commentBusy) return;
+    if (!mix || commentBusy || !activePublic()) return;
     const body = commentValue.trim();
     if (!body) return;
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      Alert.alert('Sign in required', 'Listening Room comments require an account.');
-      return;
-    }
+    const scope = mixAccessSession.scope();
     setCommentBusy(true);
-    const { data, error } = await (supabase as any)
-      .from('mix_comments')
-      .insert({ mix_id: mix.id, user_id: userId, body, timestamp_seconds: roomSecond })
-      .select('id,mix_id,user_id,body,timestamp_seconds,created_at')
-      .single();
-    setCommentBusy(false);
-    if (error || !data) {
-      Alert.alert('Comment failed', 'The room comment could not be posted. Please try again.');
-      return;
-    }
-    setComments((current) => [data as MixCommentRow, ...current]);
-    setProfileNames((current) => ({ ...current, [userId]: current[userId] || 'You' }));
-    setCommentValue('');
+    try {
+      const userId = await getCurrentUserId();
+      if (!activePublic() || !mixAccessSession.current(scope)) return;
+      if (!userId) { Alert.alert('Sign in required', 'Listening Room comments require an account.'); return; }
+      if (scope.actor !== userId) return;
+      const { data, error } = await (supabase as any).from('mix_comments')
+        .insert({ mix_id: mix.id, user_id: userId, body, timestamp_seconds: roomSecond })
+        .select('id,mix_id,user_id,body,timestamp_seconds,created_at').single();
+      if (!activePublic() || !mixAccessSession.current(scope)) return;
+      if (error || !data) throw new Error();
+      setComments(rows => [data as MixCommentRow, ...rows]);
+      setProfileNames(names => ({ ...names, [userId]: names[userId] || 'You' }));
+      setCommentValue(value => value.trim() === body ? '' : value);
+    } catch { if (activePublic() && mixAccessSession.current(scope)) Alert.alert('Comment failed', 'The room comment could not be posted. Please try again.'); }
+    finally { if (alive.current) setCommentBusy(false); }
   };
 
   if (isLandscape && mix) {
@@ -313,8 +308,8 @@ export default function MixDetailScreen() {
         <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} hidden />
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.roomArtPane}>
-          {mix.cover_url ? (
-            <Image source={{ uri: mix.cover_url }} style={styles.roomArt} resizeMode="cover" />
+          {mix.cover_url && !coverFailed ? (
+            <Image source={{ uri: mix.cover_url }} style={styles.roomArt} resizeMode="cover" onError={() => setCoverFailed(true)} />
           ) : (
             <MaterialIcons name="headphones" size={64} color={theme.colors.accentText} />
           )}
@@ -328,7 +323,8 @@ export default function MixDetailScreen() {
           </Pressable>
         </View>
         <View style={styles.roomPane}>
-          <Text style={styles.roomEyebrow}>LISTENING ROOM</Text>
+          <Text style={styles.roomEyebrow}>{privacyLabel || 'LISTENING ROOM'}</Text>
+          {coverFailed ? <Pressable accessibilityRole="button" onPress={reloadCover}><Text style={styles.roomDataError}>Reload artwork</Text></Pressable> : null}
           <Text style={styles.roomTitle} numberOfLines={2}>{mix.title || 'Untitled mix'}</Text>
           <Text style={styles.roomMeta}>
             {[mix.city, formatDuration(mix.duration_seconds), `${formatCompact(mix.play_count)} plays`]
@@ -363,17 +359,14 @@ export default function MixDetailScreen() {
               accessibilityLabel={startingPlayback ? 'Starting mix' : isThisMixPlaying && isPlaying ? 'Pause mix' : 'Play mix'}
               accessibilityState={{ busy: startingPlayback, disabled: startingPlayback }}
               disabled={startingPlayback}
-              onPress={() => {
-                if (isThisMixPlaying) togglePlayPause();
-                else void playMix();
-              }}
+              onPress={toggleRoomPlayback}
               style={({ pressed }) => [styles.roomPlay, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}
             >
               {startingPlayback
                 ? <ActivityIndicator color={theme.colors.onAccent} />
                 : <MaterialIcons name={isThisMixPlaying && isPlaying ? 'pause' : 'play-arrow'} size={38} color={theme.colors.onAccent} />}
             </Pressable>
-            <Pressable
+            {publicMix ? <><Pressable
               accessibilityRole="button"
               accessibilityLabel="Save mix"
               onPress={saveMix}
@@ -388,8 +381,14 @@ export default function MixDetailScreen() {
               style={({ pressed }) => [styles.roomGhost, pressed && { opacity: 0.86 }]}
             >
               <MaterialIcons name="ios-share" size={21} color={theme.colors.text} />
-            </Pressable>
+            </Pressable></> : null}
+            {canDownload ? <Pressable accessibilityRole="button" accessibilityLabel="Download mix" accessibilityState={{ busy: downloading, disabled: downloading }} disabled={downloading} onPress={() => void downloadMix()} style={styles.roomGhost}>
+              {downloading ? <ActivityIndicator color={theme.colors.text} /> : <MaterialIcons name="file-download" size={22} color={theme.colors.text} />}
+            </Pressable> : null}
           </View>
+          {playbackError ? <Text accessibilityRole="alert" style={styles.playbackError}>{playbackError}</Text> : null}
+          {detailState.tracklistLoading ? <ActivityIndicator accessibilityLabel="Loading tracklist" color={theme.colors.accentFill} /> : null}
+          {detailState.tracklistError ? <Pressable accessibilityRole="button" onPress={() => void detailState.retryTracklist()}><Text style={styles.roomDataError}>Tracklist could not load. Try again.</Text></Pressable> : null}
           {tracklist.length ? (
             <ScrollView
               horizontal
@@ -401,10 +400,7 @@ export default function MixDetailScreen() {
                   key={item.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Jump to ${item.raw_title || `track ${item.position}`}`}
-                  onPress={() => {
-                    void playMix();
-                    if (item.start_seconds) setTimeout(() => seekTo(item.start_seconds || 0), 500);
-                  }}
+                  onPress={() => void playAt(item.start_seconds || 0)}
                   style={({ pressed }) => [styles.roomTrackChip, pressed && { opacity: 0.86 }]}
                 >
                   <Text style={styles.roomTrackNumber}>{String(item.position).padStart(2, '0')}</Text>
@@ -435,13 +431,25 @@ export default function MixDetailScreen() {
         {mix ? (
           <PortraitListeningRoom
             mix={mix}
+            publicMix={publicMix}
+            privacyLabel={privacyLabel}
+            coverFailed={coverFailed}
+            onCoverError={() => setCoverFailed(true)}
+            onReloadCover={reloadCover}
+            tracklistLoading={detailState.tracklistLoading}
+            tracklistError={detailState.tracklistError}
+            onRetryTracklist={() => void detailState.retryTracklist()}
+            onRetrySocial={() => setSocialRetry(value => value + 1)}
+            canDownload={canDownload}
+            downloading={downloading}
+            onDownload={() => void downloadMix()}
             tracklist={tracklist}
             comments={comments}
             trackIdRequests={trackIdRequests}
             profileNames={profileNames}
             roomDataError={roomDataError}
             roomPlaying={roomPlaying}
-            startingPlayback={startingPlayback}
+            startingPlayback={startingPlayback || (isThisMixPlaying && isBuffering)}
             playbackError={playbackError}
             playedRatio={playedRatio}
             roomSecond={roomSecond}
@@ -455,27 +463,27 @@ export default function MixDetailScreen() {
             onCommentValueChange={setCommentValue}
             onClose={() => (router.canGoBack() ? router.back() : router.replace('/mixes' as any))}
             onTogglePlayback={toggleRoomPlayback}
-            onStopPlayback={stopRoomPlayback}
+            onStopPlayback={() => void stopRoomPlayback()}
             onSeekRatio={seekRoomToRatio}
-            onRewind={() => void seekTo(Math.max(0, roomSecond - 15))}
-            onForward={() => void seekTo(Math.min(roomDuration, roomSecond + 15))}
+            onRewind={() => seekRoomToRatio(roomDuration ? Math.max(0, roomSecond - 15) / roomDuration : 0)}
+            onForward={() => seekRoomToRatio(roomDuration ? Math.min(roomDuration, roomSecond + 15) / roomDuration : 0)}
             onSave={() => void saveMix()}
             onRequestTrackId={() => void requestTrackId()}
             onShare={() => void shareMix()}
-            onPostToCommunity={() => router.push({ pathname: '/create-post', params: { attachmentType: 'mix', mixId: mix.id, type: 'post' } } as any)}
+            onPostToCommunity={() => { if (activePublic()) router.push({ pathname: '/create-post', params: { attachmentType: 'mix', mixId: mix.id, type: 'post' } } as any); }}
             onPostComment={() => void postRoomComment()}
-            onTrackPress={(item) => void playMix().then(() => seekTo(item.start_seconds || 0))}
+            onTrackPress={(item) => void playAt(item.start_seconds || 0)}
           />
         ) : !loading ? (
           <RecoveryState
-            eyebrow="ROOM CLOSED"
-            title="This mix is off the air"
-            body="The session may have moved or returned to the archive. Step into another listening room without losing your place."
+            eyebrow={detailState.phase === 'error' ? 'CONNECTION INTERRUPTED' : 'ROOM CLOSED'}
+            title={detailState.phase === 'error' ? 'This mix could not load' : 'This mix is unavailable'}
+            body={detailState.phase === 'error' ? 'Check your connection and try again.' : 'The link may have expired, or you may need access from the creator.'}
             icon="headphones"
-            primaryLabel="Explore mixes"
-            onPrimary={() => router.replace('/mixes' as any)}
-            secondaryLabel="Go back"
-            onSecondary={() => router.back()}
+            primaryLabel="Try again"
+            onPrimary={() => void detailState.retry()}
+            secondaryLabel="Explore mixes"
+            onSecondary={() => router.replace('/mixes' as any)}
           />
         ) : null}
       </ScrollView>
@@ -491,6 +499,18 @@ function formatRoomTime(seconds?: number | null) {
 }
 
 type PortraitListeningRoomProps = {
+  publicMix: boolean;
+  privacyLabel: string;
+  coverFailed: boolean;
+  onCoverError: () => void;
+  onReloadCover: () => void;
+  tracklistLoading: boolean;
+  tracklistError: boolean;
+  onRetryTracklist: () => void;
+  onRetrySocial: () => void;
+  canDownload: boolean;
+  downloading: boolean;
+  onDownload: () => void;
   mix: MixItem;
   tracklist: MixTrackItem[];
   comments: MixCommentRow[];
@@ -525,6 +545,9 @@ type PortraitListeningRoomProps = {
 };
 
 function PortraitListeningRoom({
+  publicMix, privacyLabel, coverFailed, onCoverError, onReloadCover,
+  tracklistLoading, tracklistError, onRetryTracklist, onRetrySocial,
+  canDownload, downloading, onDownload,
   mix,
   tracklist,
   comments,
@@ -631,6 +654,8 @@ function PortraitListeningRoom({
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.portraitRoomEyebrow}>● PLUGGD LISTENING ROOM · SPATIAL SESSION</Text>
           <Text style={styles.portraitRoomTitle}>{mix.title || 'Untitled mix'}</Text>
+          {privacyLabel ? <Text style={styles.roomMeta}>{privacyLabel}</Text> : null}
+          {coverFailed ? <Pressable accessibilityRole="button" onPress={onReloadCover}><Text style={styles.roomDataError}>Reload artwork</Text></Pressable> : null}
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel="Close Listening Room" style={styles.closeRoomButton} onPress={onClose}>
           <MaterialIcons name="close" size={24} color={theme.colors.text} />
@@ -658,8 +683,8 @@ function PortraitListeningRoom({
                 <View style={styles.vinylGrooveOuter} />
                 <View style={styles.vinylGrooveInner} />
                 <View style={styles.vinylLabel}>
-                  {mix.cover_url ? (
-                    <Image source={{ uri: mix.cover_url }} style={styles.vinylLabelImage} />
+                  {mix.cover_url && !coverFailed ? (
+                    <Image source={{ uri: mix.cover_url }} style={styles.vinylLabelImage} onError={onCoverError} />
                   ) : (
                     <MaterialIcons name="headphones" size={32} color="#f8eddc" />
                   )}
@@ -692,8 +717,8 @@ function PortraitListeningRoom({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={startingPlayback ? 'Starting mix' : roomPlaying ? 'Pause mix' : 'Play mix'}
-            accessibilityState={{ busy: startingPlayback, disabled: !mix.audio_url || startingPlayback }}
-            disabled={!mix.audio_url || startingPlayback}
+            accessibilityState={{ busy: startingPlayback, disabled: startingPlayback }}
+            disabled={startingPlayback}
             style={styles.deckPlay}
             onPress={onTogglePlayback}
           >
@@ -713,7 +738,7 @@ function PortraitListeningRoom({
         <Text style={styles.selectorLine}>{`${selector}${mix.city ? ` · ${mix.city}` : ''}`.toUpperCase()}</Text>
         <View style={styles.nowSpinningIdentity}>
           <View style={styles.nowSpinningThumb}>
-            {mix.cover_url ? <Image source={{ uri: mix.cover_url }} style={styles.nowSpinningThumbImage} /> : <MaterialIcons name="headphones" size={30} color={theme.colors.accentText} />}
+            {mix.cover_url && !coverFailed ? <Image source={{ uri: mix.cover_url }} style={styles.nowSpinningThumbImage} onError={onCoverError} /> : <MaterialIcons name="headphones" size={30} color={theme.colors.accentText} />}
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={styles.nowSpinningTitle}>{mix.title || 'Untitled mix'}</Text>
@@ -724,7 +749,7 @@ function PortraitListeningRoom({
         <View style={styles.wavePanel}>
           <View style={styles.waveHead}>
             <Text style={styles.waveLabel}>ROOM WAVEFORM</Text>
-            <Text style={styles.waveLabel}>TIMESTAMPED TRACK IDS · COMMUNITY SYNCED</Text>
+            <Text style={styles.waveLabel}>{publicMix ? 'TIMESTAMPED TRACK IDS · COMMUNITY SYNCED' : 'PRIVATE LISTENING SESSION'}</Text>
           </View>
           <View style={styles.waveBars}>
             {Array.from({ length: 42 }).map((_, index) => {
@@ -753,7 +778,7 @@ function PortraitListeningRoom({
           <Pressable accessibilityRole="button" accessibilityLabel="Rewind 15 seconds" style={styles.transportSmall} onPress={onRewind}>
             <MaterialIcons name="replay-10" size={22} color={theme.colors.text} />
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={roomPlaying ? 'Pause mix' : 'Play mix'} accessibilityState={{ disabled: !mix.audio_url }} disabled={!mix.audio_url} style={styles.transportPlay} onPress={onTogglePlayback}>
+          <Pressable accessibilityRole="button" accessibilityLabel={roomPlaying ? 'Pause mix' : 'Play mix'} accessibilityState={{ busy: startingPlayback, disabled: startingPlayback }} disabled={startingPlayback} style={styles.transportPlay} onPress={onTogglePlayback}>
             <MaterialIcons name={roomPlaying ? 'pause' : 'play-arrow'} size={28} color={theme.colors.onAccent} />
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Forward 15 seconds" style={styles.transportSmall} onPress={onForward}>
@@ -761,7 +786,7 @@ function PortraitListeningRoom({
           </Pressable>
         </View>
 
-        <View style={styles.roomActionRow}>
+        {publicMix ? <View style={styles.roomActionRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Save mix" accessibilityState={{ busy: saving }} style={styles.roomAction} onPress={onSave} disabled={saving}>
             <MaterialIcons name="favorite-border" size={18} color={theme.colors.text} />
             <Text style={styles.roomActionText}>{saving ? 'Saving' : 'Save'}</Text>
@@ -774,16 +799,22 @@ function PortraitListeningRoom({
             <MaterialIcons name="ios-share" size={18} color={theme.colors.text} />
             <Text style={styles.roomActionText}>Share</Text>
           </Pressable>
-        </View>
+        </View> : null}
+        {canDownload ? <Pressable accessibilityRole="button" accessibilityLabel="Download mix" accessibilityState={{ busy: downloading, disabled: downloading }} disabled={downloading} style={styles.roomAction} onPress={onDownload}>
+          <MaterialIcons name="file-download" size={18} color={theme.colors.text} />
+          <Text style={styles.roomActionText}>{downloading ? 'Opening download' : 'Download mix'}</Text>
+        </Pressable> : null}
         {playbackError ? <Text accessibilityRole="alert" style={styles.playbackError}>{playbackError}</Text> : null}
       </View>
 
       <View style={styles.roomPanel}>
         <View style={styles.panelHead}>
           <Text style={styles.panelEyebrow}>TONIGHT'S SELECTION</Text>
-          <Text style={styles.panelMeta}>REAL PUBLIC TRACKLIST</Text>
+          <Text style={styles.panelMeta}>{publicMix ? 'PUBLIC TRACKLIST' : 'TRACKLIST'}</Text>
         </View>
-        {tracklist.length === 0 ? <Text style={styles.emptyText}>No public tracklist yet.</Text> : null}
+        {tracklistLoading ? <ActivityIndicator accessibilityLabel="Loading tracklist" color={theme.colors.accentFill} /> : null}
+        {tracklistError ? <Pressable accessibilityRole="button" onPress={onRetryTracklist}><Text style={styles.roomDataError}>Tracklist could not load. Try again.</Text></Pressable> : null}
+        {!tracklistLoading && !tracklistError && tracklist.length === 0 ? <Text style={styles.emptyText}>No tracklist yet.</Text> : null}
         {tracklist.map((item) => (
           <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Jump to ${item.raw_title || `track ${item.position}`}`} onPress={() => onTrackPress(item)} style={styles.tracklistRow}>
             <Text style={styles.tracklistPosition}>{String(item.position).padStart(2, '0')}</Text>
@@ -796,7 +827,7 @@ function PortraitListeningRoom({
         ))}
       </View>
 
-      <View style={styles.roomPanel}>
+      {publicMix ? <><View style={styles.roomPanel}>
         <View style={styles.panelHead}>
           <Text style={styles.panelEyebrow}>ROOM PULSE</Text>
           <Text style={styles.panelMeta}>LIVE COMMUNITY</Text>
@@ -822,7 +853,7 @@ function PortraitListeningRoom({
           <Text style={styles.panelEyebrow}>LISTENING ROOM</Text>
           <Text style={styles.panelMeta}>TIMESTAMPED LIVE CONVERSATION</Text>
         </View>
-        {roomDataError ? <Text accessibilityRole="alert" style={styles.roomDataError}>{roomDataError}</Text> : null}
+        {roomDataError ? <View><Text accessibilityRole="alert" style={styles.roomDataError}>{roomDataError}</Text><Pressable accessibilityRole="button" onPress={onRetrySocial}><Text style={styles.roomActionText}>Retry room activity</Text></Pressable></View> : null}
         <View style={styles.pinnedNote}>
           <Text style={styles.pinnedLabel}>PINNED BY CREATOR</Text>
           <Text style={styles.pinnedBody}>Drop timestamped reactions or request an ID at {formatRoomTime(roomSecond)}.</Text>
@@ -866,7 +897,7 @@ function PortraitListeningRoom({
             {commentBusy ? <ActivityIndicator color={theme.colors.onAccent} size="small" /> : <Text style={styles.commentSendText}>Send</Text>}
           </Pressable>
         </View>
-      </View>
+      </View></> : null}
     </>
   );
 }

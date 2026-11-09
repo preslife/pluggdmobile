@@ -32,6 +32,9 @@ import { useBottomChromeInset } from '../../src/design/useBottomChromeInset';
 import { releasePlayableUrl } from '../../src/lib/mobileContent';
 import { releaseShareContent } from '../../src/lib/musicShare';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
+import { releaseAccessAlertButtons } from '../../src/features/playback/releaseAccessFeedback';
+import { releaseReference } from '../../src/features/playback/releaseReference';
+import { assertReleaseAccess, assertReleaseGrantCurrent, releaseAccessMessage, releaseAccessRecoveryUrl } from '../../src/features/playback/releaseAgeAccess';
 import { ReleaseMusicAction } from '../../src/features/social-music/ReleaseMusicAction';
 
 interface ReleaseDetail {
@@ -216,6 +219,7 @@ export default function ReleaseDetailScreen() {
   const { playQueue, currentTrack, isPlaying, togglePlayPause, progress } = usePlayback();
   const { balance, spendCredits } = useWallet();
 
+  const releaseRequest = useRef(0);
   const [release, setRelease] = useState<ReleaseDetail | null>(null);
   const [tracks, setTracks] = useState<ReleaseTrack[]>([]);
   const [comments, setComments] = useState<ReleaseComment[]>([]);
@@ -239,29 +243,37 @@ export default function ReleaseDetailScreen() {
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const externalPolicyRequest = useMemo(() => ({
     kind: 'release_unlock' as const,
-    itemId: id,
+    itemId: release?.id || '',
     optionId: 'external',
     classification: 'digital' as const,
-  }), [id]);
+  }), [id, release?.id]);
   const externalPolicy = useCommercePolicy(externalPolicyRequest);
 
   useEffect(() => {
-    if (id) fetchRelease();
+    if (id) void fetchRelease();
+    return () => { releaseRequest.current++; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, user?.id]);
 
   async function fetchRelease() {
+    const request = ++releaseRequest.current;
+    const current = () => request === releaseRequest.current;
+    const reference = releaseReference(id);
     setLoading(true);
+    setRelease(null); setTracks([]); setComments([]); setCreditedArtist(null);
+    setIsOwned(false); setPurchaseId(null); setPlaybackError(null);
     try {
+      if (!reference) return;
       const { data: releaseData, error: relError } = await (supabase as any)
         .from('releases')
         .select('id,title,artist,cover_art_url,description,release_type,genre,price,credits_price,audio_url,preview_url,user_id,available_at,release_date,created_at,total_plays,producer,producers,songwriter,songwriters,composer,composers,executive_producer,mixing_engineer,mastering_engineer,recording_engineer,featured_artists,label,lyrics,spotify_url,apple_music_url,soundcloud_url,youtube_url,catalogue_mode,catalogue_import_job_id,primary_artist_id,approved,status,visibility_status')
-        .eq('id', id)
+        .eq(reference.column, reference.value)
         .eq('approved', true)
         .in('status', ['published', 'live', 'approved'])
         .eq('visibility_status', 'visible')
         .single();
 
+      if (!current()) return;
       if (relError || !releaseData) {
         console.error('[ReleaseDetail] fetch error:', relError);
         setLoading(false);
@@ -272,7 +284,7 @@ export default function ReleaseDetailScreen() {
       const { data: artistLinks } = await (supabase as any)
         .from('release_artists')
         .select('artist_id,display_name,role,sort_order,artists(id,name,image_url,claimed_profile_id,claimed_by_user_id)')
-        .eq('release_id', id)
+        .eq('release_id', releaseData.id)
         .order('sort_order', { ascending: true })
         .limit(1);
       let artistRow = Array.isArray(artistLinks) ? artistLinks[0]?.artists : null;
@@ -301,6 +313,7 @@ export default function ReleaseDetailScreen() {
           profileRoute = `/user/${artistRow.claimed_by_user_id}`;
         }
         if (!profileRoute && releaseData.user_id) profileRoute = `/user/${releaseData.user_id}`;
+        if (!current()) return;
         setCreditedArtist({
           name: artistRow.name || artistLinks?.[0]?.display_name || releaseData.artist || 'Artist',
           imageUrl: artistRow.image_url || null,
@@ -308,6 +321,7 @@ export default function ReleaseDetailScreen() {
           tipUserId,
         });
       } else {
+        if (!current()) return;
         setCreditedArtist({
           name: releaseData.artist || 'Artist',
           imageUrl: null,
@@ -319,9 +333,10 @@ export default function ReleaseDetailScreen() {
       const { data: tracksData } = await (supabase as any)
         .from('tracks')
         .select('id,title,track_number,duration,audio_url,audio_rights_status,playable_on_pluggd')
-        .eq('release_id', id)
+        .eq('release_id', releaseData.id)
         .order('track_number', { ascending: true });
 
+      if (!current()) return;
       if (tracksData) {
         const hydratedTracks = await Promise.all((tracksData as ReleaseTrack[]).map(async (track) => {
           if (Number(track.duration ?? 0) > 0) return track;
@@ -337,28 +352,32 @@ export default function ReleaseDetailScreen() {
           );
           return fileDuration ? { ...track, duration: fileDuration } : track;
         }));
+        if (!current()) return;
         setTracks(hydratedTracks);
       }
 
       const { data: commentRows } = await (supabase as any)
         .from('release_comments')
         .select('id,content,created_at,user_id')
-        .eq('release_id', id)
+        .eq('release_id', releaseData.id)
         .is('parent_comment_id', null)
         .order('created_at', { ascending: false })
         .limit(20);
+      if (!current()) return;
       if (Array.isArray(commentRows)) setComments(commentRows);
 
       const { data: { user: authedUser } } = await supabase.auth.getUser();
+      if (!current()) return;
       if (authedUser) {
         const { data: purchase } = await (supabase as any)
           .from('release_purchases')
           .select('id')
           .eq('user_id', authedUser.id)
-          .eq('release_id', id)
+          .eq('release_id', releaseData.id)
           .eq('status', 'completed')
           .maybeSingle();
 
+        if (!current()) return;
         setIsOwned(!!purchase);
         setPurchaseId(purchase?.id ?? null);
       } else {
@@ -368,7 +387,7 @@ export default function ReleaseDetailScreen() {
     } catch (err) {
       console.error('[ReleaseDetail] error:', err);
     } finally {
-      setLoading(false);
+      if (current()) setLoading(false);
     }
   }
 
@@ -475,9 +494,10 @@ export default function ReleaseDetailScreen() {
   }
 
   async function handleDownload() {
-    if (!purchaseId || downloading) return;
+    if (!purchaseId || downloading || !release) return;
     setDownloading(true);
     try {
+      const access = await assertReleaseAccess({ releaseId: release.id });
       const { data, error } = await supabase.functions.invoke('download-signed-url', {
         body: { purchaseId, purchaseType: 'release' },
       });
@@ -487,9 +507,10 @@ export default function ReleaseDetailScreen() {
         ? String(response.signedUrl ?? response.signed_url)
         : '';
       if (!/^https:\/\//i.test(signedUrl)) throw new Error('The secure download link was invalid.');
+      await assertReleaseGrantCurrent(access);
       await Linking.openURL(signedUrl);
     } catch (error) {
-      Alert.alert('Download unavailable', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Download unavailable', error instanceof Error ? error.message : 'Please try again.', releaseAccessAlertButtons(error));
     } finally {
       setDownloading(false);
     }
@@ -503,6 +524,7 @@ export default function ReleaseDetailScreen() {
     setPlaybackError(null);
     setStartingPlayback(true);
     try {
+      await assertReleaseAccess({ releaseId: release.id });
       const active = await playQueue(queue, 0);
       const activeIsRequestedRelease = Boolean(
         active &&
@@ -526,17 +548,29 @@ export default function ReleaseDetailScreen() {
           cover: active.artwork ?? '',
         },
       });
-    } catch {
-      setPlaybackError(`${requestedTitle} did not start. Try again.`);
+    } catch (error) {
+      setPlaybackError(releaseAccessMessage(error));
+      if (releaseAccessRecoveryUrl(error)) Alert.alert('Confirm your age', releaseAccessMessage(error), releaseAccessAlertButtons(error));
     } finally {
       setStartingPlayback(false);
     }
   }
 
-  function handlePlayTrack(trackId: string) {
+  async function handlePlayTrack(trackId: string) {
     const queue = buildTrackList();
     const startIndex = queue.findIndex((track) => track.id === trackId);
-    if (startIndex >= 0) playQueue(queue, startIndex);
+    if (startIndex < 0 || startingPlayback) return;
+    setStartingPlayback(true);
+    setPlaybackError(null);
+    try {
+      await assertReleaseAccess({ releaseId: release?.id, trackId: queue[startIndex].trackId });
+      const active = await playQueue([queue[startIndex]], 0);
+      if (!active) setPlaybackError('This track did not start. Please try again.');
+    } catch (error) {
+      setPlaybackError(releaseAccessMessage(error));
+      if (releaseAccessRecoveryUrl(error)) Alert.alert('Confirm your age', releaseAccessMessage(error), releaseAccessAlertButtons(error));
+    }
+    finally { setStartingPlayback(false); }
   }
 
   async function handleUnlock() {

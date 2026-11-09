@@ -9,6 +9,8 @@ import { PluggdImage } from '../../src/components/PluggdImage';
 import { pluggdFonts } from '../../src/design/typography';
 import { formatDate, formatGBP } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
+import { releaseAccessAlertButtons } from '../../src/features/playback/releaseAccessFeedback';
+import { assertReleaseAccess, assertReleaseGrantCurrent } from '../../src/features/playback/releaseAgeAccess';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
 
 type CommerceOrder = {
@@ -308,25 +310,23 @@ export default function CommerceOrderScreen() {
   const downloadFiles = async () => {
     if (!order || order.source !== 'release' || downloading) return;
     setDownloading(true);
-    const { data, error } = await supabase.functions.invoke('download-signed-url', {
-      body: { purchaseId: order.id, purchaseType: 'release' },
-    });
-    setDownloading(false);
-    if (error) {
-      Alert.alert('Download unavailable', error.message || 'PLUGGD could not issue a secure download.');
-      return;
-    }
-    const response = (data ?? {}) as Record<string, unknown>;
-    const signedUrl = typeof (response.signedUrl ?? response.signed_url) === 'string'
-      ? String(response.signedUrl ?? response.signed_url)
-      : '';
-    if (!/^https:\/\//i.test(signedUrl)) {
-      Alert.alert('Download unavailable', 'The secure download link was invalid.');
-      return;
-    }
-    await WebBrowser.openBrowserAsync(signedUrl, {
-      presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
-    });
+    try {
+      const access = await assertReleaseAccess({ releaseId: order.itemId });
+      const { data, error } = await supabase.functions.invoke('download-signed-url', {
+        body: { purchaseId: order.id, purchaseType: 'release' },
+      });
+      if (error) throw error;
+      const response = (data ?? {}) as Record<string, unknown>;
+      const signedUrl = typeof (response.signedUrl ?? response.signed_url) === 'string'
+        ? String(response.signedUrl ?? response.signed_url) : '';
+      if (!/^https:\/\//i.test(signedUrl)) throw new Error('The secure download link was invalid.');
+      await assertReleaseGrantCurrent(access);
+      await WebBrowser.openBrowserAsync(signedUrl, {
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+      });
+    } catch (error) {
+      Alert.alert('Download unavailable', error instanceof Error ? error.message : 'Please try again.', releaseAccessAlertButtons(error));
+    } finally { setDownloading(false); }
   };
 
   return (

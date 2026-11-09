@@ -70,9 +70,9 @@ export function isPublicCreatorRecommendation(card: ParityCard) {
   return isPublicProfileName(card.title);
 }
 
-export async function loadCommunityFeedBundle(): Promise<CommunityFeedBundle> {
+export async function loadCommunityFeedBundle(includePosts = true): Promise<CommunityFeedBundle> {
   const [posts, boards, parity, stories] = await Promise.all([
-    loadMobileSocialFeed({ mode: 'latest', limit: 36 }),
+    includePosts ? loadMobileSocialFeed({ mode: 'latest', limit: 36 }) : Promise.resolve([]),
     loadCommunityBoards(),
     loadCommunityParity(),
     loadHomeEditorialStories(8),

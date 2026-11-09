@@ -48,9 +48,15 @@ assert.match(sharedEntitlement, /platform_subscription_products/);
 assert.doesNotMatch(sharedEntitlement, /unit_amount|amount <=|amount >/i, 'Stripe tier must not be inferred from price amount');
 assert.match(stripeWebhook, /platform_subscription_products/);
 assert.match(stripeWebhook, /platform_sync_stripe_subscription/);
-assert.match(hook, /Private collaboration tools/);
-assert.match(hook, /Everything in Creator/);
-assert.match(hook, /Full analytics & exports/);
+assert.match(hook, /5 beat uploads and 5 releases a month/);
+assert.match(hook, /Sales and plays analytics/);
+assert.match(hook, /Unlimited collaboration posts/);
+assert.match(hook, /Sell event tickets/);
+assert.match(hook, /Fan memberships/);
+assert.match(hook, /Scheduled releases/);
+assert.match(hook, /Verified badge after payout setup/);
+assert.match(hook, /Priority placement/);
+assert.match(hook, /Custom licence templates/);
 assert.doesNotMatch(hook, /Streaming payout pool|Advanced AI studio|Content ID protection|White-label storefront|Sub-accounts/);
 assert.doesNotMatch(migration, /Streaming payout pool|Advanced AI studio|Content ID protection|White-label storefront|Sub-accounts/);
 

@@ -170,14 +170,41 @@ export async function deleteMyAccount(input: {
   throw lastError ?? new Error('We could not complete account deletion. Please try again.');
 }
 
+export type ModerationActorScope = { actorId: string; accessToken: string };
+
+/** Kept only for this submission; an awaited auth read must not retarget it. */
+export async function captureModerationActorScope(expectedActorId: string): Promise<ModerationActorScope> {
+  const { data, error } = await supabase.auth.getSession();
+  const session = data.session;
+  if (error || !session?.access_token || session.user.id !== expectedActorId) {
+    throw new Error('Your account changed. Please try again.');
+  }
+  return { actorId: expectedActorId, accessToken: session.access_token };
+}
+
+async function requireModerationActorScope(scope: ModerationActorScope) {
+  const current = await captureModerationActorScope(scope.actorId);
+  if (current.accessToken !== scope.accessToken) throw new Error('Your account changed. Please try again.');
+}
+
 export async function moderateUserContent(input: {
   contentKind: string;
   text: string;
   mediaUrls?: string[];
   destination?: Record<string, unknown>;
-}) {
-  return invoke<{ decision: 'allow' | 'review' | 'reject'; message?: string; submissionId?: string }>(
-    'moderate-user-content',
-    input,
-  );
+}, actorScope?: ModerationActorScope) {
+  type Result = { decision: 'allow' | 'review' | 'reject'; message?: string; submissionId?: string };
+  if (!actorScope) return invoke<Result>('moderate-user-content', input);
+
+  await requireModerationActorScope(actorScope);
+  // An explicit bearer remains the initiating actor even if auth changes while
+  // functions.invoke prepares its request. Never derive authority from the body.
+  const { data, error } = await supabase.functions.invoke('moderate-user-content', {
+    body: input,
+    headers: { Authorization: `Bearer ${actorScope.accessToken}` },
+  });
+  await requireModerationActorScope(actorScope);
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+  return data as Result;
 }

@@ -3,8 +3,8 @@ import { pluggdFonts } from '../../design/typography';
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Linking, Pressable, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Linking, Platform, Pressable, Share, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Image, PluggdImage } from '../../components/PluggdImage';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { PostMusicAttribution } from '../social-music/PostMusicAttribution';
@@ -26,11 +26,17 @@ import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { useAuth } from '../../context/AuthProvider';
 import { MobileSocialInlineVideo } from './MobileSocialInlineVideo';
 import { useSuspendInlineVideos } from './useInlineVideoVisibility';
+import { shareWithRecommendationConfirmation } from '../community-feed/communityRelevanceController';
+import { CommunityReleasePlayer } from '../community-feed/CommunityReleasePlayer';
+import { releaseIdForPost } from '../community-feed/releasePostPlayback';
 
 type MobileSocialPostCardProps = {
   post: MobileSocialPost;
   variant?: 'timeline' | 'thread' | 'compact';
   onMutated?: () => void;
+  onRecommendationOpen?: () => void;
+  prepareRecommendationShare?: () => (() => void) | undefined;
+  onRecommendationAudio?: (elapsedMs: number) => void;
 };
 
 function displayNameFor(post: MobileSocialPostPreview) {
@@ -194,9 +200,9 @@ function MediaGrid({
   );
 }
 
-function VideoAttachment({ post, onOpen, blocked }: { post: MobileSocialPostPreview; onOpen: () => void; blocked: boolean }) {
+function VideoAttachment({ post, onOpen, blocked, onQualifiedListening }: { post: MobileSocialPostPreview; onOpen: () => void; blocked: boolean; onQualifiedListening?: (elapsedMs: number) => void }) {
   if (!post.video) return null;
-  return <MobileSocialInlineVideo uri={post.video} blocked={blocked} onFullscreen={onOpen} />;
+  return <MobileSocialInlineVideo uri={post.video} blocked={blocked} onFullscreen={onOpen} onQualifiedListening={onQualifiedListening} />;
 }
 
 function AudioAttachment({ post }: { post: MobileSocialPostPreview }) {
@@ -254,6 +260,8 @@ function LinkPreview({ post }: { post: MobileSocialPostPreview }) {
   const description = getLinkPreviewValue(post.link_preview, 'description');
   const url = getLinkPreviewValue(post.link_preview, 'url');
   const image = getLinkPreviewValue(post.link_preview, 'image') || getLinkPreviewValue(post.link_preview, 'image_url');
+  const releaseId = releaseIdForPost(post.link_preview);
+  if (releaseId) return <CommunityReleasePlayer releaseId={releaseId} title={title || 'Release'} artist={description} image={image} />;
   if (!title && !description && !url) return null;
 
   return (
@@ -285,7 +293,7 @@ function QuoteCard({ post }: { post: MobileSocialPostPreview }) {
       accessibilityRole="button"
       accessibilityLabel={`Open quoted post by ${displayNameFor(post)}`}
       style={styles.quoteCard}
-      onPress={() => router.push(`/post/${post.id}` as any)}
+      onPress={() => { router.push(`/post/${post.id}` as any); }}
     >
       <GlassPanel intensity="subtle" radius={16} contentStyle={styles.quoteContent}>
         <View style={styles.quoteHeader}>
@@ -351,15 +359,23 @@ function PollCard({
   );
 }
 
-export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: MobileSocialPostCardProps) {
+export function MobileSocialPostCard({ post, variant = 'timeline', onMutated, onRecommendationOpen, prepareRecommendationShare, onRecommendationAudio }: MobileSocialPostCardProps) {
   const styles = usePostStyles();
   const theme = usePluggdTheme();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [mediaSelection, setMediaSelection] = useState<MobileSocialMediaSelection>(null);
   useSuspendInlineVideos(mediaSelection !== null);
   const [deleting, setDeleting] = useState(false);
+  const [reposting, setReposting] = useState(false);
+  const repostPending = useRef(false);
+  const actionContext = useRef({ actor: user?.id, token: session?.access_token, postId: post.id, revision: 0 });
+  if (actionContext.current.actor !== user?.id || actionContext.current.token !== session?.access_token || actionContext.current.postId !== post.id) {
+    actionContext.current = { actor: user?.id, token: session?.access_token, postId: post.id, revision: actionContext.current.revision + 1 };
+  }
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const displayName = displayNameFor(post);
   const publicMeta = [post.username ? `@${post.username}` : null, formatDate(post.created_at)].filter(Boolean).join(' · ');
   const compact = variant === 'compact';
@@ -381,12 +397,32 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
         ? await toggleSocialLike(id)
         : action === 'bookmark'
           ? await toggleSocialBookmark(id)
-          : await toggleSocialRepost(id);
+          : await toggleSocialRepost(id, user?.id);
     if (!result.success) {
       Alert.alert(`${action === 'bookmark' ? 'Save' : action} failed`, result.error || 'Please try again.');
       return;
     }
     refresh();
+  };
+
+  const openRepost = () => {
+    if (repostPending.current) return;
+    selectionHaptic();
+    if (!user) { Alert.alert('Sign in to repost', 'Sign in to share this post with your community.'); return; }
+    const context = actionContext.current;
+    const current = () => mounted.current && actionContext.current === context;
+    Alert.alert('Share this post', undefined, [
+      { text: post.reposted ? 'Undo repost' : 'Repost', onPress: async () => {
+        if (!current() || repostPending.current) return;
+        repostPending.current = true;
+        setReposting(true);
+        try { await act('repost'); }
+        catch { if (current()) Alert.alert('Repost failed', 'Please try again.'); }
+        finally { repostPending.current = false; if (mounted.current) setReposting(false); }
+      } },
+      { text: 'Quote post', onPress: () => { if (current()) router.push({ pathname: '/create-post', params: { quotePostId: actionPostId(post) } } as any); } },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const openOverflow = () => {
@@ -447,12 +483,13 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
   return (
     <>
       <Pressable
-      // Keep the video controls individually reachable by VoiceOver.
-      accessible={!post.video}
-      accessibilityRole="button"
-      accessibilityLabel={`Open post by ${displayName}`}
+      // Keep Quote/Repost, media and release controls individually reachable.
+      // The Reply action remains an explicit accessible route to the full post.
+      accessible={false}
+      focusable={Platform.OS === 'web' ? false : undefined}
+      tabIndex={Platform.OS === 'web' ? -1 : undefined}
       style={[styles.row, variant === 'thread' && styles.rowThread]}
-      onPress={() => router.push(`/post/${post.id}` as any)}
+      onPress={() => { onRecommendationOpen?.(); router.push(`/post/${post.id}` as any); }}
     >
       <View style={[styles.rowInner, variant === 'thread' && styles.rowInnerThread]}>
         <Pressable
@@ -494,7 +531,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
           {!compact ? (
             <>
               <MediaGrid post={post} expanded={variant === 'thread'} onOpen={(index) => setMediaSelection({ kind: 'image', index })} />
-              <VideoAttachment post={post} blocked={mediaSelection !== null} onOpen={() => setMediaSelection({ kind: 'video' })} />
+              <VideoAttachment post={post} blocked={mediaSelection !== null} onQualifiedListening={onRecommendationAudio} onOpen={() => setMediaSelection({ kind: 'video' })} />
               <PostMusicAttribution music={post.music} />
               <AudioAttachment post={post} />
               <LinkPreview post={post} />
@@ -504,11 +541,11 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
           ) : null}
 
           <View style={styles.actions}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Reply" style={styles.action} onPress={() => router.push(`/post/${post.id}` as any)}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Reply" style={styles.action} onPress={() => { onRecommendationOpen?.(); router.push(`/post/${post.id}` as any); }}>
               <MaterialIcons name="chat-bubble-outline" size={19} color={theme.colors.textMuted} />
               {post.comments_count ? <Text style={styles.actionText}>{formatCompact(post.comments_count)}</Text> : null}
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={post.reposted ? 'Undo repost' : 'Repost'} style={styles.action} onPress={() => act('repost')}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Repost or quote post" accessibilityState={{ busy: reposting, disabled: reposting }} disabled={reposting} style={styles.action} onPress={openRepost}>
               <MaterialIcons name="repeat" size={20} color={post.reposted ? theme.colors.accentText : theme.colors.textMuted} />
               {post.reposts_count ? <Text style={[styles.actionText, post.reposted && styles.actionOrange]}>{formatCompact(post.reposts_count)}</Text> : null}
             </Pressable>
@@ -524,9 +561,15 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
               accessibilityRole="button"
               accessibilityLabel="Share post"
               style={styles.action}
-              onPress={() => {
+              onPress={async () => {
                 selectionHaptic();
-                void Share.share({ message: post.content ? `PLUGGD: ${post.content}` : 'Open this PLUGGD post' });
+                try {
+                  await shareWithRecommendationConfirmation(
+                    () => Share.share({ message: post.content ? `PLUGGD: ${post.content}` : 'Open this PLUGGD post' }),
+                    prepareRecommendationShare, Platform.OS,
+                    Platform.OS === 'web' && typeof navigator !== 'undefined' && typeof navigator.share === 'function',
+                  );
+                } catch (error) { if (!(error instanceof Error && error.name === 'AbortError')) Alert.alert('Post not shared', 'Please try again.'); }
               }}
             >
               <MaterialIcons name="ios-share" size={19} color={theme.colors.textMuted} />
@@ -538,6 +581,7 @@ export function MobileSocialPostCard({ post, variant = 'timeline', onMutated }: 
       <MobileSocialMediaViewer
         post={post}
         selection={mediaSelection}
+        onQualifiedListening={post.music ? onRecommendationAudio : undefined}
         onSelectionChange={setMediaSelection}
       />
     </>

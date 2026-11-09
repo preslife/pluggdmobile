@@ -42,7 +42,9 @@ async function fixture({music=false,reader=false,reduce=false,deferSource=false,
   'react-native':native,'expo-modules-core':{requireNativeModule:()=>({isOtherAudioPlaying:()=>f.external})}
  });
  f.preference=preference;f.storage=storage;
+ const relevanceModel=load(new URL('../src/features/community-feed/communityRelevanceModel.ts',import.meta.url),{});
  const mocks={
+  '../community-feed/communityRelevanceModel':relevanceModel,
   '@expo/vector-icons':{MaterialIcons:()=>null},
   'expo-video':{VideoView:()=>React.createElement('div',{'data-video':true}),useVideoPlayer:(_src,setup)=>React.useMemo(()=>{setup(player);return player},[])},
   'react-native':{AccessibilityInfo:{isReduceMotionEnabled:async()=>f.reduce,isScreenReaderEnabled:async()=>f.reader,addEventListener:(name,fn)=>{f.screenListeners.set(name,fn);return{remove:()=>f.screenListeners.delete(name)}}},ActivityIndicator:()=>React.createElement('span',null,'Loading'),Pressable:Host('button'),StyleSheet:{create:x=>x,absoluteFill:{},absoluteFillObject:{}},Text:Host('span'),View:Host('div')},

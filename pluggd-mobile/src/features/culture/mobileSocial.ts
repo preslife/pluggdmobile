@@ -3,7 +3,7 @@ import { postMusicSummaries } from '../social-music/service';
 import type { PostMusic } from '../social-music/model';
 import { musicPostId } from '../social-music/model';
 import { isNonPublicTestProfileName } from '../../lib/publicAudienceFilters';
-import { loadBlockedUserIds, moderateUserContent } from '../safety/accountSafety';
+import { captureModerationActorScope, loadBlockedUserIds, moderateUserContent } from '../safety/accountSafety';
 import {
   loadPublicCreatorIdentityMap,
   publicCreatorDisplayName,
@@ -326,6 +326,15 @@ async function enrichPosts(rows: SocialPostRow[], userId: string | null): Promis
     }));
 }
 
+/** Hydrate server-authorised ranked rows without prepending or re-sorting them. */
+export async function hydrateRankedMobileSocialPosts(rows: Record<string, any>[], expectedActorId: string): Promise<MobileSocialPost[]> {
+  if (await currentUserId() !== expectedActorId) throw new Error('This feed session changed.');
+  const blocked = await loadBlockedUserIds();
+  const posts = await enrichPosts(rows.filter(row => !row.parent_id && isPostVisibleToViewer(row, expectedActorId) && !blocked.has(row.user_id)), expectedActorId);
+  if (await currentUserId() !== expectedActorId) throw new Error('This feed session changed.');
+  return posts;
+}
+
 async function postsByIds(postIds: string[]) {
   const ids = Array.from(new Set(postIds.filter(Boolean)));
   if (!ids.length) return [];
@@ -569,9 +578,10 @@ export async function toggleSocialBookmark(postId: string) {
   return error && !isDuplicateError(error) ? { success: false, error: error.message } : { success: true, bookmarked: true };
 }
 
-export async function toggleSocialRepost(postId: string) {
+export async function toggleSocialRepost(postId: string, expectedActorId?: string) {
   const userId = await currentUserId();
   if (!userId) return { success: false, error: 'Sign in to repost.' };
+  if (expectedActorId && userId !== expectedActorId) return { success: false, error: 'Your account changed. Please try again.' };
   const existing = await safeMaybe<any>((supabase as any).from('social_reposts').select('id').eq('post_id', postId).eq('user_id', userId).maybeSingle());
   if (existing?.id) {
     const { error } = await (supabase as any).from('social_reposts').delete().eq('id', existing.id);
@@ -615,6 +625,7 @@ export async function toggleSocialRepost(postId: string) {
 }
 
 export async function createMobileSocialPost(input: {
+  expectedActorId?: string;
   content: string;
   postType?: SocialPostType | string | null;
   destinations?: MobileSocialDestinationInput[];
@@ -628,8 +639,14 @@ export async function createMobileSocialPost(input: {
   isQuote?: boolean;
   originalPostId?: string | null;
 }) {
+  let moderationScope: Awaited<ReturnType<typeof captureModerationActorScope>> | undefined;
+  if (input.expectedActorId) {
+    try { moderationScope = await captureModerationActorScope(input.expectedActorId); }
+    catch { return { success: false, error: 'Your account changed. Please try again.' }; }
+  }
   const userId = await currentUserId();
   if (!userId) return { success: false, error: 'Sign in to create a post.' };
+  if (input.expectedActorId && userId !== input.expectedActorId) return { success: false, error: 'Your account changed. Please try again.' };
   const content = cleanContent(input.content);
   const hasPayload = Boolean(
     content ||
@@ -653,14 +670,20 @@ export async function createMobileSocialPost(input: {
     input.audio,
     input.gif,
   ].filter((value): value is string => Boolean(value));
-  const moderation = await moderateUserContent({
-    contentKind: input.poll ? 'poll' : postType,
-    text: content,
-    mediaUrls,
-    destination: communityDestination
-      ? { type: communityDestination.destination_type, id: communityDestination.destination_id }
-      : { type: 'global_feed', id: 'community' },
-  });
+  let moderation: Awaited<ReturnType<typeof moderateUserContent>>;
+  try {
+    moderation = await moderateUserContent({
+      contentKind: input.poll ? 'poll' : postType,
+      text: content,
+      mediaUrls,
+      destination: communityDestination
+        ? { type: communityDestination.destination_type, id: communityDestination.destination_id }
+        : { type: 'global_feed', id: 'community' },
+    }, moderationScope);
+  } catch (error) {
+    if (moderationScope) return { success: false, error: 'Your submission could not be confirmed for this account. Please try again.' };
+    throw error;
+  }
   if (moderation.decision === 'reject') {
     return { success: false, error: moderation.message || 'This content cannot be posted.' };
   }
@@ -673,6 +696,7 @@ export async function createMobileSocialPost(input: {
     };
   }
 
+  if (input.expectedActorId && await currentUserId() !== input.expectedActorId) return { success: false, error: 'Your account changed. Please try again.' };
   const { data, error } = await (supabase as any)
     .from('social_posts')
     .insert({

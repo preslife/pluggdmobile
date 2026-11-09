@@ -5,7 +5,7 @@ import { edFonts } from '../src/design/editorial';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { AccessibilityInfo, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Alert, Image, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RepeatMode } from 'react-native-track-player';
@@ -17,6 +17,8 @@ import { formatDuration } from '../src/lib/mobileContent';
 import { playbackShareContent } from '../src/lib/musicShare';
 import { toggleSavedContent } from '../src/features/culture/mobileServices';
 import { loadPublicPlaybackMetadata, loadPublishedTrackLyrics, loadReleasePlaybackCollection, playbackIdentity } from '../src/features/playback/publicPlaybackService';
+import { isProtectedMix } from '../src/features/playback/protectedMixPlayback';
+import { mixAccessSession } from '../src/features/playback/mixAccessSession';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 function waveformNumbers(value: unknown): number[] {
@@ -101,6 +103,9 @@ export default function PlayerScreen() {
   const isCompactPortrait = !isLandscape && width <= 400 && height <= 700;
   const {
     currentTrack,
+    mixMetadataRefreshing,
+    refreshMixPresentation,
+    mixRecovery,
     queue,
     isPlaying,
     isBuffering,
@@ -120,9 +125,17 @@ export default function PlayerScreen() {
 
   // The player is a listening room: rotating the phone enters the wide layout.
   useListeningRoomOrientation();
-  const title = String(currentTrack?.title || params.title || 'No track selected');
-  const artist = String(currentTrack?.artist || params.artist || 'PLUGGD');
-  const cover = String(currentTrack?.artwork || params.cover || '');
+  const protectedMix = isProtectedMix(currentTrack);
+  const title = String(currentTrack?.title || 'No track selected');
+  const artist = String(currentTrack?.artist || 'PLUGGD');
+  const artwork = String(currentTrack?.artwork || '');
+  const [failedCover, setFailedCover] = useState('');
+  const cover = artwork && failedCover !== artwork ? artwork : '';
+  const [saving, setSaving] = useState(false);
+  const latestTrack = useRef(currentTrack);
+  latestTrack.current = currentTrack;
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const progressPercent = progress.duration > 0 ? Math.min((progress.position / progress.duration) * 100, 100) : 0;
   const scrubberWidth = Math.max(width - 32, 1);
   const scrollRef = useRef<ScrollView>(null);
@@ -139,21 +152,21 @@ export default function PlayerScreen() {
     staleTime: 1000 * 60 * 5,
   });
   const lyricsQuery = useQuery({
-    queryKey: ['player', 'published-track-lyrics', currentTrack?.trackId],
+    queryKey: ['player', 'published-track-lyrics', !protectedMix ? currentTrack?.trackId : undefined],
     queryFn: () => loadPublishedTrackLyrics(currentTrack!.trackId!),
-    enabled: Boolean(currentTrack?.trackId),
+    enabled: Boolean(!protectedMix && currentTrack?.trackId),
     staleTime: 1000 * 60 * 5,
   });
   const releaseCollectionQuery = useQuery({
-    queryKey: ['player', 'release-playback-collection', currentTrack?.releaseId],
+    queryKey: ['player', 'release-playback-collection', !protectedMix ? currentTrack?.releaseId : undefined],
     queryFn: () => loadReleasePlaybackCollection(currentTrack!.releaseId!),
-    enabled: Boolean(currentTrack?.releaseId),
+    enabled: Boolean(!protectedMix && currentTrack?.releaseId),
     staleTime: 1000 * 60 * 5,
   });
-  const releaseTracks = releaseCollectionQuery.data?.tracks ?? [];
+  const releaseTracks = !protectedMix ? releaseCollectionQuery.data?.tracks ?? [] : [];
   const waveformBars = useMemo(() => compactWaveform(playbackMetadataQuery.data?.waveformData), [playbackMetadataQuery.data?.waveformData]);
-  const publishedLyrics = String(lyricsQuery.data?.plainText || currentTrack?.legacyLyrics || '').trim();
-  const timedLyrics = lyricsQuery.data?.timedLines ?? [];
+  const publishedLyrics = !protectedMix ? String(lyricsQuery.data?.plainText || currentTrack?.legacyLyrics || '').trim() : '';
+  const timedLyrics = !protectedMix ? lyricsQuery.data?.timedLines ?? [] : [];
   const lyricsLines = useMemo(() => timedLyrics.length
     ? timedLyrics.map((line) => line.text)
     : publishedLyrics.split(/\r?\n/), [publishedLyrics, timedLyrics]);
@@ -181,7 +194,9 @@ export default function PlayerScreen() {
     if (!Number.isFinite(lineOffset)) return;
     scrollRef.current?.scrollTo({ y: Math.max(0, lyricsOffset.current + lineOffset - height * 0.34), animated: !reduceMotion });
   }, [activeLyricIndex, height, lyricsFocused, reduceMotion]);
-  const sourceRoute = currentTrack?.releaseId
+  const sourceRoute = protectedMix && currentTrack?.mixId
+    ? { pathname: '/mixes/[id]', params: { id: currentTrack.mixId, ...(currentTrack.mixAccess?.accessKey ? { access: currentTrack.mixAccess.accessKey } : {}) } }
+    : currentTrack?.releaseId
     ? `/release/${currentTrack.releaseId}`
     : currentTrack?.mixId
       ? `/mixes/${currentTrack.mixId}`
@@ -222,6 +237,7 @@ export default function PlayerScreen() {
   };
 
   const handleShare = async () => {
+    if (!currentTrack || isProtectedMix(currentTrack) || latestTrack.current !== currentTrack) return;
     const content = playbackShareContent(currentTrack);
     if (!content) {
       Alert.alert('Link unavailable', 'Open this music from its release or creator page and try again.');
@@ -236,43 +252,26 @@ export default function PlayerScreen() {
   };
 
   const handleSave = async () => {
+    if (!currentTrack || saving || isProtectedMix(currentTrack) || latestTrack.current !== currentTrack) return;
+    const scope = mixAccessSession.scope();
+    const active = () => mounted.current && latestTrack.current === currentTrack && mixAccessSession.current(scope);
+    const target = currentTrack.beatId ? { type: 'beat' as const, id: currentTrack.beatId }
+      : currentTrack.releaseId ? { type: 'release' as const, id: currentTrack.releaseId }
+      : currentTrack.mixId ? { type: 'mix' as const, id: currentTrack.mixId } : null;
+    if (!target) { router.push('/library' as any); return; }
     selectionHaptic();
-
-    if (!currentTrack) {
-      Alert.alert('Nothing playing', 'Start a track first, then save it from the player.');
-      return;
-    }
-
-    if (currentTrack.beatId) {
-      const result = await toggleSavedContent('beat', currentTrack.beatId);
+    setSaving(true);
+    try {
+      const result = await toggleSavedContent(target.type, target.id);
+      if (!active()) return;
       if (!result.success) {
         if (result.error?.toLowerCase().includes('sign in')) router.push('/auth/login' as any);
-        else Alert.alert('Save failed', result.error || 'This item could not be saved.');
+        else Alert.alert('Save failed', 'This item could not be saved. Please try again.');
         return;
       }
-      Alert.alert(result.saved ? 'Saved' : 'Removed from saved', `${title} ${result.saved ? 'was added to' : 'was removed from'} your saved beats.`);
-      return;
-    }
-
-    if (currentTrack.releaseId) {
-      const result = await toggleSavedContent('release', currentTrack.releaseId);
-      if (!result.success) {
-        if (result.error?.toLowerCase().includes('sign in')) router.push('/auth/login' as any);
-        else Alert.alert('Save failed', result.error || 'This release could not be saved.');
-        return;
-      }
-      Alert.alert(result.saved ? 'Saved' : 'Removed from saved', `${title} ${result.saved ? 'was added to' : 'was removed from'} your saved releases.`);
-      return;
-    }
-
-    if (currentTrack.mixId) {
-      const result = await toggleSavedContent('mix', currentTrack.mixId);
-      Alert.alert('Save unavailable', result.error || 'Open the mix page for library actions.');
-      router.push(`/mixes/${currentTrack.mixId}` as any);
-      return;
-    }
-
-    router.push('/library' as any);
+      Alert.alert(result.saved ? 'Saved' : 'Removed from saved', `${title} ${result.saved ? 'was added to' : 'was removed from'} your library.`);
+    } catch { if (active()) Alert.alert('Save failed', 'This item could not be saved. Please try again.'); }
+    finally { if (mounted.current) setSaving(false); }
   };
 
   const openPlayerOptions = () => {
@@ -282,11 +281,24 @@ export default function PlayerScreen() {
       'Closing the player stops playback and clears the current queue.',
       [
         { text: 'Cancel', style: 'cancel' },
-        ...(currentTrack ? [{ text: 'Share track', onPress: () => void handleShare() }] : []),
+        ...(currentTrack && !protectedMix ? [{ text: 'Share track', onPress: () => void handleShare() }] : []),
         { text: 'Close player', style: 'destructive', onPress: () => void dismissPlayer() },
       ],
     );
   };
+
+  const mixNotice = <>
+    {mixMetadataRefreshing ? <ActivityIndicator accessibilityLabel="Refreshing mix details" color={theme.colors.accentText} /> : null}
+    {protectedMix && artwork && failedCover === artwork && !mixRecovery ? <Pressable accessibilityRole="button" accessibilityLabel="Reload mix artwork" disabled={mixMetadataRefreshing} accessibilityState={{ busy: mixMetadataRefreshing, disabled: mixMetadataRefreshing }} onPress={() => void refreshMixPresentation()} style={styles.lyricsRetry}>
+      <Text style={styles.lyricsStatus}>Reload artwork</Text>
+    </Pressable> : null}
+    {mixRecovery ? <View>
+      <Text accessibilityRole="alert" style={styles.lyricsStatus}>Mix details could not be refreshed.</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel="Open mix details to check access" onPress={() => router.push({ pathname: '/mixes/[id]', params: { id: mixRecovery.mixId, ...(mixRecovery.accessKey ? { access: mixRecovery.accessKey } : {}) } })} style={styles.lyricsRetry}>
+        <Text style={styles.lyricsStatus}>Open mix details to try again</Text>
+      </Pressable>
+    </View> : null}
+  </>;
 
   if (isLandscape) {
     return (
@@ -295,7 +307,7 @@ export default function PlayerScreen() {
         <Stack.Screen options={{ headerShown: false, presentation: 'modal', animation: 'slide_from_bottom' }} />
         <View style={styles.roomArtPane}>
           {cover ? (
-            <Image source={{ uri: cover }} style={styles.roomArt} resizeMode="cover" />
+            <Image source={{ uri: cover }} style={styles.roomArt} resizeMode="cover" onError={() => setFailedCover(artwork)} />
           ) : (
             <MaterialIcons name="music-note" size={72} color={theme.colors.accentText} />
           )}
@@ -317,6 +329,7 @@ export default function PlayerScreen() {
           <MaterialIcons name="more-horiz" size={25} color={theme.colors.text} />
         </Pressable>
         <View style={styles.roomPane}>
+          {mixNotice}
           {!currentTrack ? (
             <View style={styles.roomEmpty}>
               <Text style={[styles.topTitle, { color: theme.colors.textMuted }]}>PLUGGD LISTENING ROOM</Text>
@@ -401,7 +414,7 @@ export default function PlayerScreen() {
           </Pressable>
           <Text pointerEvents="none" style={[styles.topTitle, styles.playerTopTitle]}>Now Playing</Text>
           <View style={styles.topActions}>
-            {currentTrack ? (
+            {currentTrack && !protectedMix ? (
               <Pressable accessibilityRole="button" accessibilityLabel="Share current track" style={({ pressed }) => [styles.topButton, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]} onPress={handleShare}>
                 <MaterialIcons name="ios-share" size={21} color={theme.colors.text} />
               </Pressable>
@@ -412,6 +425,7 @@ export default function PlayerScreen() {
           </View>
         </View>
 
+        {mixNotice}
         {!currentTrack ? (
           <View style={styles.emptyPlayer}>
             <View style={styles.emptyArtwork}>
@@ -430,15 +444,15 @@ export default function PlayerScreen() {
           </View>
         ) : <>
         <View style={[styles.heroArt, isCompactPortrait && styles.compactHeroArt]}>
-          {cover ? <Image source={{ uri: cover }} style={styles.fill} /> : <MaterialIcons name="music-note" size={78} color={theme.colors.accentText} />}
+          {cover ? <Image source={{ uri: cover }} style={styles.fill} onError={() => setFailedCover(artwork)} /> : <MaterialIcons name="music-note" size={78} color={theme.colors.accentText} />}
         </View>
 
         <View style={[styles.trackHeader, isCompactPortrait && styles.compactTrackHeader]}>
           <View style={styles.trackCopy}>
             <Text style={[styles.trackTitle, isCompactPortrait && styles.compactTrackTitle]} numberOfLines={2}>{title}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel={`Open ${artist}`} onPress={() => currentTrack?.releaseId && router.push(`/release/${currentTrack.releaseId}` as any)}>
+            {currentTrack?.releaseId && !protectedMix ? <Pressable accessibilityRole="button" accessibilityLabel={`Open ${artist}`} onPress={() => router.push(`/release/${currentTrack.releaseId}` as any)}>
               <Text style={[styles.trackArtist, isCompactPortrait && styles.compactTrackArtist]} numberOfLines={1}>{artist}</Text>
-            </Pressable>
+            </Pressable> : <Text style={[styles.trackArtist, isCompactPortrait && styles.compactTrackArtist]} numberOfLines={1}>{artist}</Text>}
           </View>
         </View>
 
@@ -491,10 +505,10 @@ export default function PlayerScreen() {
         </View>
 
         <View style={styles.actionRow}>
-          <PlayerAction icon="favorite-border" label="Like" accessibilityLabel="Like current track" onPress={handleSave} />
+          {!protectedMix ? <><PlayerAction icon="favorite-border" label={saving ? 'Saving' : 'Like'} accessibilityLabel="Like current track" onPress={handleSave} />
           <PlayerAction icon="send" label="Share" accessibilityLabel="Share current track" onPress={handleShare} />
-          <PlayerAction icon="groups" label="Scene" accessibilityLabel="Open track community" onPress={() => router.push(sceneRoute as any)} />
-          <PlayerAction icon="chat-bubble-outline" label="Talk" accessibilityLabel="Open track comments" onPress={() => router.push(talkRoute as any)} />
+          <PlayerAction icon="groups" label="Scene" accessibilityLabel="Open track community" onPress={() => { if (!isProtectedMix(latestTrack.current)) router.push(sceneRoute as any); }} />
+          <PlayerAction icon="chat-bubble-outline" label="Talk" accessibilityLabel="Open track comments" onPress={() => { if (!isProtectedMix(latestTrack.current)) router.push(talkRoute as any); }} /></> : null}
           <PlayerAction icon="playlist-add" label="Queue" onPress={() => scrollRef.current?.scrollTo({ y: queueOffset.current, animated: true })} />
           {publishedLyrics ? <PlayerAction icon="notes" label="Lyrics" onPress={() => { setLyricsFocused(true); scrollRef.current?.scrollTo({ y: lyricsOffset.current, animated: !reduceMotion }); }} /> : null}
         </View>
@@ -526,7 +540,7 @@ export default function PlayerScreen() {
             ))}
           </View>
         ) : null}
-        {currentTrack?.releaseId && releaseCollectionQuery.isError ? (
+        {!protectedMix && currentTrack?.releaseId && releaseCollectionQuery.isError ? (
           <Pressable accessibilityRole="button" accessibilityLabel="Retry loading release tracks" onPress={() => void releaseCollectionQuery.refetch()} style={styles.releaseRetry}>
             <MaterialIcons name="refresh" size={18} color={theme.colors.accentText} />
             <Text style={styles.releaseRetryText}>Release tracks couldn’t load. Tap to try again.</Text>
@@ -560,7 +574,7 @@ export default function PlayerScreen() {
           ))}
         </View>
 
-        {currentTrack.releaseId ? (
+        {!protectedMix && currentTrack.releaseId ? (
           <View
             style={styles.lyricsSection}
             onLayout={(event) => {
@@ -611,7 +625,7 @@ export default function PlayerScreen() {
           </View>
         ) : null}
 
-        {sourceRoute ? <Pressable accessibilityRole="button" accessibilityLabel={`Open source for ${title}`} onPress={() => router.push(sourceRoute as any)} style={styles.sourceCard}>{cover ? <Image source={{ uri: cover }} style={styles.sourceImage} /> : null}<LinearGradient colors={['rgba(6,5,4,0.25)', 'rgba(6,5,4,0.94)']} style={StyleSheet.absoluteFill} /><Text style={styles.sourceKicker}>FROM THE CATALOGUE</Text><View><Text style={styles.sourceTitle}>Go deeper into this {sourceLabel}</Text><Text style={styles.sourceMeta}>Support, track context and creator details →</Text></View></Pressable> : null}
+        {sourceRoute ? <Pressable accessibilityRole="button" accessibilityLabel={`Open source for ${title}`} onPress={() => { if (latestTrack.current === currentTrack) router.push(sourceRoute as any); }} style={styles.sourceCard}>{cover ? <Image source={{ uri: cover }} style={styles.sourceImage} onError={() => setFailedCover(artwork)} /> : null}<LinearGradient colors={['rgba(6,5,4,0.25)', 'rgba(6,5,4,0.94)']} style={StyleSheet.absoluteFill} /><Text style={styles.sourceKicker}>{protectedMix ? 'YOUR LISTENING ROOM' : 'FROM THE CATALOGUE'}</Text><View><Text style={styles.sourceTitle}>Go deeper into this {sourceLabel}</Text><Text style={styles.sourceMeta}>{protectedMix ? 'Return to mix details and tracklist →' : 'Support, track context and creator details →'}</Text></View></Pressable> : null}
         </>}
       </ScrollView>
     </View>
