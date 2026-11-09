@@ -33,19 +33,21 @@ assert.match(config, /supportsTablet:\s*false/, 'release must be iPhone-only');
 assert.match(config, /ITSAppUsesNonExemptEncryption:\s*false/, 'export compliance must be explicit');
 assert.match(
   config,
-  /NSLocationWhenInUseUsageDescription:[\s\S]*nearby events, maps or directions/,
+  /NSLocationWhenInUseUsageDescription:[\s\S]*nearby music, directions or a Maps signal/,
   'Expo config must provide a clear location-in-use purpose string',
 );
 assert.match(
   nativeInfoPlist,
-  /<key>NSLocationWhenInUseUsageDescription<\/key>[\s\S]*nearby events, maps or directions/,
+  /<key>NSLocationWhenInUseUsageDescription<\/key>[\s\S]*nearby music, directions or a Maps signal/,
   'the native Info.plist must contain the location-in-use purpose string shipped to Apple',
 );
-assert.match(
-  nativeInfoPlist,
-  /<key>CFBundleVersion<\/key>\s*<string>\$\(CURRENT_PROJECT_VERSION\)<\/string>/,
-  'the archived build number must come from CURRENT_PROJECT_VERSION instead of a stale hard-coded value',
-);
+const nativeBuildNumber = nativeInfoPlist.match(/<key>CFBundleVersion<\/key>\s*<string>([^<]+)<\/string>/)?.[1];
+const configuredBuildNumber = process.env.IOS_BUILD_NUMBER
+  ?? config.match(/buildNumber:\s*process\.env\.IOS_BUILD_NUMBER\s*\?\?\s*['"](\d+)['"]/)?.[1];
+assert.ok(nativeBuildNumber && configuredBuildNumber, 'native and Expo build numbers must be present');
+if (nativeBuildNumber !== '$(CURRENT_PROJECT_VERSION)') {
+  assert.equal(nativeBuildNumber, configuredBuildNumber, 'the generated native build number must match the configured release build');
+}
 assert.doesNotMatch(config, /merchantIdentifier|stripe-react-native/i, 'native config must not contain Stripe or Apple Pay');
 assert.match(policy, /useCommercePolicy/, 'App Store build must route commerce through the unified policy');
 assert.match(policy, /resolve-commerce-policy/, 'commerce eligibility must be server resolved');
@@ -66,7 +68,8 @@ assert.match(login, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'login access-code field m
 assert.match(login, /if \(LAUNCH_ACCESS_REQUIRED && code\)/, 'production login must not validate launch codes');
 assert.match(signup, /\{LAUNCH_ACCESS_REQUIRED \? \(/, 'signup access-code field must be development-only');
 assert.match(signup, /minimum_age_confirmed:\s*true/, 'signup must persist age confirmation');
-assert.match(signup, /accessibilityRole="checkbox"/, 'signup must require explicit accessible age confirmation');
+assert.match(signup, /DateTimePicker[\s\S]*dateOfBirth[\s\S]*ageConfirmed/, 'signup must collect a date of birth and check minimum age');
+assert.match(signup, /accessibilityLabel=\{dateOfBirth[\s\S]*Choose date of birth/, 'signup must expose an accessible date selector');
 assert.match(socialConsent, /requireSocialAuthConsent/, 'social provider boundary must enforce age confirmation');
 assert.match(signup, /router\.push\('\/legal\/terms'/, 'signup must expose native legal terms');
 assert.match(signup, /router\.push\('\/legal\/privacy'/, 'signup must expose native privacy policy');
