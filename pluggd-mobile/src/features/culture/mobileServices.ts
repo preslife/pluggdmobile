@@ -2412,8 +2412,11 @@ async function toggleGenericSavedContent(kind: SavedContentKind, id: string) {
   return { success: true, saved: Boolean(row?.saved ?? true), supported: true };
 }
 
-export async function toggleProfileFollow(profileId: string) {
+export async function toggleProfileFollow(profileId: string, assertCurrent: () => void = () => undefined, expectedUserId?: string) {
+  assertCurrent();
   const userId = await getCurrentUserId();
+  assertCurrent();
+  if (expectedUserId && userId !== expectedUserId) throw new Error('account_changed');
   if (!userId) return { success: false, error: 'Sign in to follow creators.', supported: false };
   if (profileId === userId) return { success: false, error: 'Your own profile is already available from the avatar menu.', supported: true };
 
@@ -2425,12 +2428,15 @@ export async function toggleProfileFollow(profileId: string) {
       .eq('following_id', profileId)
       .maybeSingle(),
   );
+  assertCurrent();
   if (existing?.id) {
     const { error } = await (supabase as any).from('user_follows').delete().eq('id', existing.id);
+    assertCurrent();
     return error ? { success: false, error: error.message, supported: true } : { success: true, saved: false, supported: true };
   }
 
   const { error } = await (supabase as any).from('user_follows').insert({ follower_id: userId, following_id: profileId });
+  assertCurrent();
   return error ? { success: false, error: error.message, supported: true } : { success: true, saved: true, supported: true };
 }
 

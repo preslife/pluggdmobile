@@ -110,6 +110,7 @@ async function fixture({ screen = 'detail', actor = owner, visibility = 'private
       require(id) {
         if (id === 'react' || id === 'react/jsx-runtime') return require(id);
         if (id === 'react-native') return native;
+        if (id.endsWith('/listeningRoom/useMixCreator')) return { useMixCreator: () => ({ creator: undefined, followSlot: null }) };
         if (id === '@react-navigation/native') return { useIsFocused: () => f.focused };
         if (id.endsWith('/features/listeningRoom/ListeningRoomScreen')) return load('src/features/listeningRoom/ListeningRoomScreen.tsx');
         if (id.endsWith('/features/listeningRoom/roomViewState') || id === './roomViewState') return load('src/features/listeningRoom/roomViewState.ts');
@@ -209,7 +210,7 @@ test('private detail renders scoped metadata/tracklist without public social rea
   await f.render(); assert.ok(f.text().includes('Scoped private fixture')); assert.ok(f.text().includes('Private mix'));
   assert.ok(f.text().includes('Second selection')); assert.deepEqual(f.db, []);
   for (const label of ['Share mix', 'Save mix', 'Request Track ID', 'Post comment', 'Post mix to community']) assert.equal(f.button(label), undefined);
-  await f.press('Listen'); assert.ok(f.button('Download')); assert.equal(f.client.getQueryCache().getAll().length, 0);
+  await f.press('Listen'); assert.ok(f.button('Download mix')); assert.equal(f.client.getQueryCache().getAll().length, 0);
 }));
 test('private chapter selection stays paused; explicit Play starts the intended scoped timestamp with no delayed seek', using(async f => {
   await f.render(); await f.press('Seek to Second selection at 1:24');
@@ -258,11 +259,11 @@ test('new pause suppresses a pending track-jump failure and all delayed navigati
 }));
 test('authorized download opens only the checked URL and describes handoff truthfully', using(async f => {
   await f.render(); f.invoke = async (_, { body }) => body.action === 'download' ? { data: { url: signed('audio'), fileName: 'mix.mp3' }, error: null } : response();
-  await f.press('Listen'); await f.press('Download'); assert.deepEqual(f.links, [signed('audio')]); assert.equal(f.alerts[0][0], 'Download opened');
+  await f.press('Listen'); await f.press('Download mix'); assert.deepEqual(f.links, [signed('audio')]); assert.equal(f.alerts[0][0], 'Download opened');
 }));
 test('account change during download suppresses URL handoff', using(async f => {
   await f.render(); const pending = deferred(); f.invoke = (_, { body }) => body.action === 'download' ? pending.promise : Promise.resolve({ data: null, error: { status: 404 } });
-  await f.press('Listen'); await f.press('Download'); await f.actor(other);
+  await f.press('Listen'); await f.press('Download mix'); await f.actor(other);
   await act(async () => pending.resolve({ data: { url: signed('audio'), fileName: 'mix.mp3' }, error: null })); assert.equal(f.links.length, 0);
 }));
 test('focused metadata refresh failure invalidates private playback permission', using(async f => {
@@ -300,7 +301,7 @@ test('full player saves public Mix successfully rather than reporting false fail
 test('landscape private detail retains playback/download and excludes public actions', async () => {
   const f = await fixture({ landscape: true });
   try {
-    await f.render(); assert.ok(f.text().includes('Private mix')); assert.ok(f.button('Play mix')); assert.ok(f.button('Download'));
+    await f.render(); assert.ok(f.text().includes('Private mix')); assert.ok(f.button('Play mix')); assert.ok(f.button('Download mix'));
     assert.equal(f.button('Share mix'), undefined); assert.equal(f.button('Save mix'), undefined);
     await f.press('Seek to Second selection at 1:24'); await f.press('Play mix'); await f.tick(350); assert.equal(f.calls.find(call => call.play).startAt, 84);
   } finally { await f.close(); }

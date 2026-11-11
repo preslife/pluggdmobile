@@ -17,6 +17,7 @@ import { currentNativePlaybackIntent, nativePlaybackIntent } from '../../src/fea
 import { ListeningRoomScreen } from '../../src/features/listeningRoom/ListeningRoomScreen';
 import { roomViewState, createRoomSeekQueue } from '../../src/features/listeningRoom/roomViewState';
 import { useMixSocial } from '../../src/features/listeningRoom/useMixSocial';
+import { useMixCreator } from '../../src/features/listeningRoom/useMixCreator';
 
 const MIX_STARTING_FEEDBACK_MS = 350;
 
@@ -145,6 +146,7 @@ function MixDetailContent({ reference, accessKey }: { reference: string; accessK
   };
 
   const social = useMixSocial(mix?.id, publicMix);
+  const creator = useMixCreator(mix?.id, mix?.owner_user_id, publicMix, activePublic);
   const changeSocial = async (kind: 'like' | 'save') => {
     if (!activePublic() || social.busy) return;
     const scope = mixAccessSession.scope();
@@ -286,9 +288,9 @@ function MixDetailContent({ reference, accessKey }: { reference: string; accessK
   };
 
   return <View style={{flex:1,backgroundColor:theme.colors.background}}>
-    <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
+    <StatusBar style={mix ? 'light' : theme.scheme === 'light' ? 'dark' : 'light'} />
     <Stack.Screen options={{headerShown:false}} />
-    {mix && restoredMix === mix.id ? <ListeningRoomScreen key={`${identity.key}|${mix.id}`} sessionKey={identity.key} mix={mix} publicMix={publicMix} privacyLabel={privacyLabel}
+    {mix && restoredMix === mix.id ? <ListeningRoomScreen key={`${identity.key}|${mix.id}`} sessionKey={identity.key} mix={mix} publicMix={publicMix} privacyLabel={privacyLabel} creator={creator.creator} followSlot={creator.followSlot}
       position={roomPosition} duration={roomDuration} playing={roomPlaying} engaged={tonearmEngaged}
       starting={startingPlayback} playbackError={playbackError}
       onToggle={toggleRoomPlayback} onStop={stopRoomPlayback} onSeek={seekRoom} isCurrent={active}
