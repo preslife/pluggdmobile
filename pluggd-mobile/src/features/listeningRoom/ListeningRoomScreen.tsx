@@ -128,7 +128,8 @@ export function ListeningRoomScreen(p: Props) {
     pending.current = null; deferredPlay.current = null; setWaitingForDeck(false); setCue(null); setPlaced(true);
     p.onSeek(Math.max(0, Math.min(p.duration, seconds)));
   };
-  const button = (icon: Icon, label: string, action: () => void, selected = false, disabled = false) => <Pressable
+  // Keep native functional styles intact instead of passing them through CSS interop.
+  const button = (icon: Icon, label: string, action: () => void, selected = false, disabled = false) => <Pressable cssInterop={false}
     accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected, disabled, busy: disabled }}
     disabled={disabled} onPress={action} style={({ pressed }) => [styles.action, selected && { borderColor: c.accentText, backgroundColor: c.accentSoft }, { opacity: disabled ? 0.5 : pressed ? 0.72 : 1 }]}>
     <MaterialIcons name={icon} size={19} color={selected ? c.accentText : c.text} /><Text style={styles.actionText}>{label}</Text>

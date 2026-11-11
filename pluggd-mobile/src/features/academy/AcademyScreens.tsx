@@ -20,7 +20,8 @@ function Action({ children, onPress, disabled = false, primary = false, label }:
   children: ReactNode; onPress: () => void; disabled?: boolean; primary?: boolean; label?: string;
 }) {
   const { colors } = usePluggdTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
+  // These inline style callbacks must reach the native Pressable unchanged.
+  return <Pressable cssInterop={false} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
     style={({ pressed }) => [styles.action, { backgroundColor: primary ? colors.accentFill : colors.surfaceStrong,
       borderColor: colors.controlBorder, opacity: disabled ? 0.5 : pressed ? 0.75 : 1 }]}>
     <Text style={[styles.actionText, { color: primary ? colors.onAccent : colors.text }]}>{children}</Text>
@@ -50,7 +51,7 @@ function Shell({ children, refresh, refreshing = false }: { children: ReactNode;
 
 function CourseCard({ course }: { course: AcademyCourse }) {
   const router = useRouter(); const { colors } = usePluggdTheme(); const [imageFailed, setImageFailed] = useState(false);
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${course.title}, ${c.free}, ${course.lessonCount} lessons`}
+  return <Pressable cssInterop={false} accessibilityRole="button" accessibilityLabel={`${course.title}, ${c.free}, ${course.lessonCount} lessons`}
     onPress={() => router.push(`/learn/${encodeURIComponent(course.identifier)}` as any)}
     style={({ pressed }) => [styles.course, { backgroundColor: colors.surfaceStrong, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }]}>
     {course.image && !imageFailed ? <Image source={{ uri: course.image }} style={styles.artwork} onError={() => setImageFailed(true)} accessibilityIgnoresInvertColors />
