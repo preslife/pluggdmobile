@@ -46,6 +46,8 @@ assert.equal(chrome.hasDedicatedAppHeader('/market'), true);
 assert.equal(chrome.hasDedicatedAppHeader('/creator/events'), true);
 assert.equal(chrome.hasDedicatedAppHeader('/opportunities'), true);
 assert.equal(chrome.hasDedicatedAppHeader('/opportunities/example-opportunity'), true);
+assert.equal(chrome.hasDedicatedAppHeader('/learn'), true);
+assert.equal(chrome.hasDedicatedAppHeader('/learn/course-slug'), true);
 assert.equal(chrome.hasDedicatedAppHeader('/notifications'), false);
 assert.equal(chrome.hasDedicatedAppHeader('/wallet'), false);
 assert.equal(chrome.shouldUseWideTopNavigation('/notifications', 'top'), true);
@@ -55,6 +57,9 @@ assert.equal(chrome.shouldUseWideTopNavigation('/', 'top'), true);
 assert.equal(chrome.shouldUseWideTopNavigation('/discover', 'top'), true);
 assert.equal(chrome.shouldUseWideTopNavigation('/events', 'top'), true);
 assert.equal(chrome.shouldUseWideTopNavigation('/market', 'top'), true);
+assert.equal(chrome.shouldUseWideTopNavigation('/learn', 'top'), true);
+assert.equal(chrome.shouldUseWideTopNavigation('/learn/course-slug', 'top'), true);
+assert.equal(chrome.shouldUseWideTopNavigation('/learn/course-slug', 'compact'), false);
 assert.equal(chrome.shouldUseWideTopNavigation('/creator/events', 'top'), false);
 
 assert.equal(

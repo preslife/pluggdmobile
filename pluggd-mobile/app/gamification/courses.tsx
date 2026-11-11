@@ -1,5 +1,5 @@
 import { Redirect } from 'expo-router';
 
 export default function CoursesRedirect() {
-  return <Redirect href="/community" />;
+  return <Redirect href="/learn" />;
 }

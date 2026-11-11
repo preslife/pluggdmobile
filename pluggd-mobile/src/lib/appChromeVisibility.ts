@@ -16,6 +16,7 @@ const HIDDEN_EXACT = new Set([
   '/live/feed',
   '/live/create',
   '/ticket-scan',
+  '/split/scan',
   '/swipe-beats',
   '/creator/upload',
   '/creator/onboarding',
@@ -35,6 +36,7 @@ const DEDICATED_HEADER_EXACT = new Set([
   '/discover',
   '/events',
   '/following',
+  '/learn',
   '/library',
   '/live',
   '/market',
@@ -62,6 +64,7 @@ const DEDICATED_HEADER_PREFIXES = [
   '/creator/',
   '/events/',
   '/genre/',
+  '/learn/',
   '/membership/',
   '/mixes/',
   '/opportunities/',
@@ -87,6 +90,7 @@ const ADAPTIVE_DISCOVERY_HEADER_EXACT = new Set([
   '/community',
   '/discover',
   '/events',
+  '/learn',
   '/library',
   '/market',
   '/mixes',
@@ -140,7 +144,8 @@ export function shouldUseWideTopNavigation(
   return (
     navigationMode === 'top' &&
     !isAppChromeHidden(pathname) &&
-    (!hasDedicatedAppHeader(pathname) || ADAPTIVE_DISCOVERY_HEADER_EXACT.has(normalizeChromePath(pathname)))
+    (!hasDedicatedAppHeader(pathname) || ADAPTIVE_DISCOVERY_HEADER_EXACT.has(normalizeChromePath(pathname))
+      || normalizeChromePath(pathname).startsWith('/learn/'))
   );
 }
 

@@ -163,6 +163,7 @@ export function AccountMenuButton({
 
   accountItems.push(
     { label: 'PLUGGD Plans', detail: 'Platform features and commission rate', route: '/plans', icon: 'workspace-premium', emphasis: true },
+    { label: 'Academy', detail: 'Free courses and your progress', route: '/learn', icon: 'school' },
     { label: 'PLUGGD Progress', route: '/badges', icon: 'workspace-premium' },
     menuCreatorAccess
       ? { label: 'Wallet / Earnings', route: '/creator/payouts', icon: 'account-balance-wallet' }

@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "name": "PLUGGD listening deck",
+  "source": "listeningdeck3.glb",
+  "sourceSHA256": "d69c176cd26f5a89d8a6b68d00e605a8635dd80eaf736e4041a24ba18d5269c9",
+  "coordinates": {
+    "up": "+Y",
+    "front": "+Z",
+    "units": "source units; body width approximately 0.98"
+  },
+  "nodes": {
+    "root": "DeckRoot",
+    "platter": "PlatterPivot",
+    "yaw": "TonearmYaw",
+    "lift": "TonearmLift",
+    "startStop": "StartStopButton",
+    "stylus": "TonearmStylus",
+    "headshell": "TonearmHeadshellClean"
+  },
+  "platter": {
+    "pivot": [
+      -0.09878,
+      0.233,
+      0.00001
+    ],
+    "axis": [
+      0,
+      1,
+      0
+    ],
+    "clockwiseSign": -1,
+    "radius": 0.35,
+    "parts": [
+      0,
+      2,
+      30
+    ]
+  },
+  "tonearm": {
+    "pivot": [
+      0.332,
+      0.28,
+      -0.17
+    ],
+    "yawAxis": [
+      0,
+      1,
+      0
+    ],
+    "liftAxis": [
+      1,
+      0,
+      0
+    ],
+    "restAngle": 0,
+    "outerAngle": -0.36,
+    "innerAngle": -0.79,
+    "restLift": 0,
+    "loweredLift": 0.011623866107924794,
+    "raisedLift": -0.07,
+    "stylusWorldAtRest": [
+      0.248706,
+      0.2375,
+      0.27073
+    ],
+    "headshellWorldAtRest": [
+      0.25,
+      0.275,
+      0.275
+    ],
+    "headshellLocal": [
+      -0.082,
+      -0.005,
+      0.445
+    ],
+    "liftParts": [
+      3,
+      4
+    ],
+    "yawOnlyParts": [
+      14,
+      19,
+      33
+    ],
+    "calibration": "Source pivot and rest pose preserved. Added physical stylus tip; +0.011623866107924794 rad lowers it to Y0.23238 while keeping the cartridge about 0.0048 source units clear. Outer/middle/inner mat contact measured from actual triangles.",
+    "stylusLocal": [
+      -0.083294,
+      -0.0425,
+      0.44073
+    ],
+    "stylus": {
+      "node": "TonearmStylus",
+      "mountWorldAtRest": [
+        0.253,
+        0.247,
+        0.268
+      ],
+      "cantileverEndWorldAtRest": [
+        0.248706,
+        0.239,
+        0.27073
+      ],
+      "cantileverRadius": 0.00065,
+      "cantileverSegments": 12,
+      "diamondHeight": 0.0015,
+      "diamondRadius": 0.00065,
+      "diamondSegments": 8,
+      "description": "Small metal cantilever and pointed stylus added beneath the original flattened cartridge. Tip is the exact stylusLocal contact point; original artwork-bearing geometry remains unchanged."
+    },
+    "contact": {
+      "recordNode": "LogoMat",
+      "recordSurfaceY": 0.23238,
+      "tolerance": 0.00008,
+      "runtimeTolerance": 0.00015,
+      "measurements": [
+        {
+          "progress": 0,
+          "angle": -0.36,
+          "surfaceY": 0.232354010372406,
+          "tipY": 0.23238,
+          "gap": 0.000025989627594
+        },
+        {
+          "progress": 0.5,
+          "angle": -0.575,
+          "surfaceY": 0.232322203018537,
+          "tipY": 0.23238,
+          "gap": 0.000057796981463
+        },
+        {
+          "progress": 1,
+          "angle": -0.79,
+          "surfaceY": 0.23238310307114282,
+          "tipY": 0.23238,
+          "gap": -0.00000310307114282
+        }
+      ],
+      "cartridgeClearanceMin": 0.0047,
+      "surfaceRangeAcrossRotation": [
+        0.2321346222122888,
+        0.23308714239656356
+      ],
+      "description": "Measured vertical triangle intersections on editable LogoMat at the actual stylus tip, platter at zero rotation. A fixed contact plane accommodates tiny irregularities in the supplied mat; no source mesh is flattened or moved."
+    },
+    "headshellCleanup": {
+      "revision": 1,
+      "origin": [
+        0.248706,
+        0,
+        0.27073
+      ],
+      "forward": [
+        -0.675951,
+        0,
+        0.73694657
+      ],
+      "right": [
+        0.73694657,
+        0,
+        0.675951
+      ],
+      "cutLongitudinal": -0.076,
+      "sleeveCentre": [
+        -0.008,
+        0.2785,
+        -0.075
+      ],
+      "sleeveLength": 0.026,
+      "sleeveRadius": 0.014,
+      "cartridgeCentre": [
+        -0.0005,
+        0.2575,
+        -0.01
+      ],
+      "cartridgeSize": [
+        0.034,
+        0.026,
+        0.04
+      ],
+      "description": "Clean machined headshell, fasteners, finger lift and graphite cartridge. Original S-tube and locking ring are retained behind a hidden neck seam; calibrated stylus is unchanged."
+    }
+  },
+  "animations": [
+    "PlatterSpin",
+    "CueAndPark"
+  ],
+  "rest": {
+    "node": "TonearmRest",
+    "position": [
+      0.3522,
+      0.198,
+      0.04
+    ],
+    "saddleContactY": 0.2678,
+    "openingWidth": 0.0226,
+    "description": "Added fixed dark support beneath the source shaft's measured underside in its parked pose. Original hardware and artwork preserved."
+  },
+  "runtime": {
+    "drivePivotsFromPlayer": true,
+    "autoPlayEmbeddedClips": false
+  },
+  "version": 2
+}

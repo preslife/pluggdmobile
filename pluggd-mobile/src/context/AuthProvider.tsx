@@ -10,6 +10,8 @@ import { registerMobilePushToken } from "../lib/localNotifications";
 import { supabase } from "../lib/supabase";
 import { clearSupabaseAuthStorage } from "../lib/storage";
 import { privateDateOfBirth } from "../features/auth/private-date-of-birth";
+import { roomViewState } from "../features/listeningRoom/roomViewState";
+import { clearPendingSplitReturn } from "../features/studio/splitPendingReturn";
 
 type AuthContextValue = {
   user: User | null;
@@ -39,8 +41,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let previousAccountId: string | null = null;
 
     const clearStaleSession = async () => {
+      clearPendingSplitReturn();
       await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
       await clearSupabaseAuthStorage().catch(() => undefined);
       if (!mounted) return;
@@ -49,6 +53,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const applySession = async (nextSession: Session | null) => {
+      if (!mounted) return;
+      const nextAccountId = nextSession?.user.id ?? null;
+      // Preserve a guest invitation through first sign-in; never carry it
+      // between authenticated accounts or past a sign-out.
+      if (previousAccountId !== nextAccountId) roomViewState.clear();
+      if (previousAccountId && previousAccountId !== nextAccountId) clearPendingSplitReturn();
+      previousAccountId = nextAccountId;
       if (!LAUNCH_ACCESS_REQUIRED) {
         if (!mounted) return;
         setSession(nextSession);
@@ -60,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
 
       if (!access.allowed) {
+        clearPendingSplitReturn();
         const message =
           access.message ?? 'Access code required for new accounts during early access.';
         await storeLaunchAccessNotice(message);
@@ -94,7 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) setLoading(false);
       });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (!mounted) return;
+      if (event === 'SIGNED_OUT') clearPendingSplitReturn();
       void applySession(newSession);
     });
     return () => {
@@ -122,6 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.user.id, session?.access_token]);
 
   const signOut = async () => {
+    clearPendingSplitReturn();
+    roomViewState.clear();
     if (session?.access_token) {
       await supabase.functions
         .invoke('mobile-studio-handoff', { body: { action: 'revoke' } })

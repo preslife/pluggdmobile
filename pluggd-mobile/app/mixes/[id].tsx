@@ -1,39 +1,22 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { pluggdFonts } from '../../src/design/typography';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Easing,
-  Image,
-  Linking,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { ActivityIndicator, Alert, Linking, Share, View } from 'react-native';
 import { RecoveryState } from '../../components/ContentUI';
 import { usePlayback } from '../../src/context/PlaybackProvider';
 import { useListeningRoomOrientation } from '../../src/lib/orientation';
-import { edFonts } from '../../src/design/editorial';
-import { getCurrentUserId, toggleSavedContent } from '../../src/features/culture/mobileServices';
+import { getCurrentUserId } from '../../src/features/culture/mobileServices';
 import { supabase } from '../../src/lib/supabase';
-import { MixItem, MixTrackItem, formatCompact, formatDuration } from '../../src/lib/mobileContent';
+import { formatDuration } from '../../src/lib/mobileContent';
 import { usePluggdTheme } from '../../src/design/usePluggdTheme';
-import { PlaybackSeekBar } from '../../src/components/PlaybackSeekBar';
 import { mixAccessSession } from '../../src/features/playback/mixAccessSession';
 import { nativeMixTrack } from '../../src/features/playback/protectedMixPlayback';
 import { nativeMixDownload } from '../../src/features/playback/nativeMixDetail';
 import { useMixSessionIdentity, useNativeMixDetail } from '../../src/features/playback/useNativeMixDetail';
 import { currentNativePlaybackIntent, nativePlaybackIntent } from '../../src/features/playback/nativePlaybackControl';
+import { ListeningRoomScreen } from '../../src/features/listeningRoom/ListeningRoomScreen';
+import { roomViewState, createRoomSeekQueue } from '../../src/features/listeningRoom/roomViewState';
+import { useMixSocial } from '../../src/features/listeningRoom/useMixSocial';
 
 const MIX_STARTING_FEEDBACK_MS = 350;
 
@@ -68,9 +51,9 @@ export default function MixDetailScreen() {
 
 function MixDetailContent({ reference, accessKey }: { reference: string; accessKey?: string }) {
   const theme = usePluggdTheme();
-  const styles = useMixStyles();
+  const identity = useMixSessionIdentity();
   const router = useRouter();
-  const { playTrack, play, pause, seekTo, currentTrack, isPlaying, togglePlayPause, progress, isBuffering } = usePlayback();
+  const { playTrack, pause, seekTo, currentTrack, isPlaying, togglePlayPause, progress } = usePlayback();
   const detailState = useNativeMixDetail(reference, accessKey);
   const envelope = detailState.detail;
   const mix = envelope?.mix ?? null;
@@ -83,11 +66,8 @@ function MixDetailContent({ reference, accessKey }: { reference: string; accessK
   currentPublic.current = publicMix;
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
   // Turning the phone sideways enters the wide listening-room layout.
   useListeningRoomOrientation();
-  const [saving, setSaving] = useState(false);
   const [startingPlayback, setStartingPlayback] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [comments, setComments] = useState<MixCommentRow[]>([]);
@@ -98,10 +78,7 @@ function MixDetailContent({ reference, accessKey }: { reference: string; accessK
   const [requestBusy, setRequestBusy] = useState(false);
   const [roomDataError, setRoomDataError] = useState<string | null>(null);
   const [socialRetry, setSocialRetry] = useState(0);
-  const [coverFailed, setCoverFailed] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  useEffect(() => { setCoverFailed(false); }, [mix?.cover_url]);
-  const vinylRotation = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     setComments([]); setTrackIdRequests([]); setProfileNames({}); setRoomDataError(null);
@@ -167,17 +144,13 @@ function MixDetailContent({ reference, accessKey }: { reference: string; accessK
     } finally { if (alive.current) setStartingPlayback(false); }
   };
 
-  const saveMix = async () => {
-    if (!mix || saving || !activePublic()) return;
+  const social = useMixSocial(mix?.id, publicMix);
+  const changeSocial = async (kind: 'like' | 'save') => {
+    if (!activePublic() || social.busy) return;
     const scope = mixAccessSession.scope();
-    setSaving(true);
-    try {
-      const result = await toggleSavedContent('mix', mix.id);
-      if (!activePublic() || !mixAccessSession.current(scope)) return;
-      Alert.alert(result.success ? (result.saved ? 'Saved' : 'Removed') : 'Save unavailable',
-        result.success ? `${mix.title || 'Mix'} library state updated.` : 'Your library could not be updated. Please try again.');
-    } catch { if (activePublic() && mixAccessSession.current(scope)) Alert.alert('Save unavailable', 'Your library could not be updated. Please try again.'); }
-    finally { if (alive.current) setSaving(false); }
+    if (!scope.actor) { Alert.alert('Sign in required', 'Sign in to Like or Save a mix.'); return; }
+    try { await (kind === 'like' ? social.toggleLike() : social.toggleSave()); }
+    catch { if (activePublic() && mixAccessSession.current(scope)) Alert.alert(kind === 'like' ? 'Like unavailable' : 'Save unavailable', 'Your choice could not be saved. Please try again.'); }
   };
 
   const shareMix = async () => {
@@ -200,64 +173,74 @@ function MixDetailContent({ reference, accessKey }: { reference: string; accessK
   };
   const canDownload = Boolean(envelope && (envelope.owner || mix?.allow_download));
   const privacyLabel = publicMix ? '' : `${mix?.visibility === 'unlisted' ? 'Unlisted' : 'Private'} mix${mix?.status !== 'published' ? ' · Not published' : ''}`;
-  const reloadCover = () => { setCoverFailed(false); void detailState.retry(); };
   const isThisMixPlaying = Boolean(mix && currentTrack?.mixId === mix.id);
-  const playedRatio =
-    isThisMixPlaying && progress.duration > 0 ? Math.min(1, progress.position / progress.duration) : 0;
-  const roomSecond = isThisMixPlaying ? Math.max(0, Math.floor(progress.position || 0)) : 0;
-  const roomDuration = Math.max(0, progress.duration || Number(mix?.duration_seconds ?? 0));
-  const roomPlaying = Boolean(isThisMixPlaying && isPlaying);
-  const tonearmEngaged = Boolean(
-    isThisMixPlaying
-    && (roomPlaying || (roomSecond > 0 && (roomDuration <= 0 || roomSecond < roomDuration - 1))),
-  );
-
+  const roomDuration = Math.max(0, (isThisMixPlaying ? progress.duration : 0) || Number(mix?.duration_seconds ?? 0));
+  const [selectedPosition, setSelectedPosition] = useState(0);
+  const [restoredMix, setRestoredMix] = useState<string | null>(null);
+  const [seekDraft, setSeekDraft] = useState<{ seconds: number; until: number } | null>(null);
   useEffect(() => {
-    let loop: Animated.CompositeAnimation | null = null;
-    if (roomPlaying) {
-      loop = Animated.loop(
-        Animated.timing(vinylRotation, {
-          toValue: 1,
-          duration: 7600,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }),
-      );
-      loop.start();
-    }
-    return () => loop?.stop();
-  }, [roomPlaying, vinylRotation]);
-
-  const toggleRoomPlayback = () => {
-    if (!active() || startingPlayback) return;
-    if (roomPlaying || isThisMixPlaying) {
-      void togglePlayPause();
-      return;
-    }
-    void playMix();
+    if (!mix || mixAccessSession.identityKey() !== identity.key) return;
+    const restored = roomViewState.read(identity.key, mix.id);
+    setSelectedPosition(restored.position); setCommentValue(restored.draft); setSeekDraft(null); setRestoredMix(mix.id);
+  }, [identity.key, mix?.id]);
+  useEffect(() => {
+    if (mix && restoredMix === mix.id && mixAccessSession.identityKey() === identity.key) roomViewState.write(identity.key, mix.id, { draft: commentValue });
+  }, [identity.key, mix?.id, commentValue, restoredMix]);
+  useEffect(() => {
+    if (!seekDraft) return;
+    if (isThisMixPlaying && Math.abs(progress.position - seekDraft.seconds) < 1) { setSeekDraft(null); return; }
+    const timer = setTimeout(() => setSeekDraft(null), Math.max(0, seekDraft.until - Date.now()));
+    return () => clearTimeout(timer);
+  }, [seekDraft, progress.position, isThisMixPlaying]);
+  const roomPosition = Math.min(roomDuration || Infinity, Math.max(0, seekDraft?.seconds ?? (isThisMixPlaying ? progress.position : selectedPosition)));
+  const roomSecond = Math.floor(roomPosition);
+  const roomPlaying = Boolean(isThisMixPlaying && isPlaying);
+  const tonearmEngaged = Boolean(isThisMixPlaying && (roomPlaying || (roomPosition > 0 && (roomDuration <= 0 || roomPosition < roomDuration - 1))));
+  const latestPlayback = useRef({ isThisMixPlaying, seekTo, active });
+  latestPlayback.current = { isThisMixPlaying, seekTo, active };
+  const seekQueue = useMemo(() => {
+    let expectedIntent: number | null = null;
+    const scope = identity.ready ? mixAccessSession.scope() : null;
+    const queue = createRoomSeekQueue({
+      current: () => alive.current && scope !== null && mixAccessSession.current(scope) && latestPlayback.current.active() && latestPlayback.current.isThisMixPlaying && (expectedIntent === null || currentNativePlaybackIntent(expectedIntent)),
+      seek: async seconds => {
+        const pending = latestPlayback.current.seekTo(seconds);
+        expectedIntent = nativePlaybackIntent();
+        await pending;
+      },
+      failed: () => { setSeekDraft(null); setPlaybackError('The position could not be changed. Please try again.'); },
+    });
+    return {
+      request: (seconds: number) => {
+        if (!queue.busy) expectedIntent = nativePlaybackIntent();
+        queue.request(seconds);
+      },
+      dispose: queue.dispose,
+    };
+  }, [identity.key, mix?.id]);
+  useEffect(() => () => seekQueue.dispose(), [seekQueue]);
+  const seekRoom = (seconds: number) => {
+    if (!active() || !Number.isFinite(seconds) || roomDuration <= 0) return;
+    const target = Math.max(0, Math.min(roomDuration, seconds));
+    setPlaybackError(null); setSelectedPosition(target);
+    if (isThisMixPlaying) { setSeekDraft({seconds:target,until:Date.now()+2000}); seekQueue.request(target); }
+    // A different queued track is left alone until the listener explicitly presses Play.
   };
-
+  const toggleRoomPlayback = async (startAt: number): Promise<boolean> => {
+    if (!active() || startingPlayback) return false;
+    try {
+      if (isThisMixPlaying) { await togglePlayPause(); return active(); }
+      return Boolean(await playMix(false, startAt));
+    } catch { if (active()) setPlaybackError('Playback could not change. Please try again.'); return false; }
+  };
   const stopRoomPlayback = async () => {
-    if (!isThisMixPlaying || !active()) return;
-    const stopped = pause();
-    const ticket = nativePlaybackIntent();
-    await stopped;
-    if (active() && currentNativePlaybackIntent(ticket)) await seekTo(0);
-  };
-
-  const playAt = async (seconds: number) => {
-    if (!active() || !Number.isFinite(seconds) || seconds < 0) return;
-    if (!isThisMixPlaying) { await playMix(false, seconds); return; }
-    const sought = seekTo(seconds);
-    const ticket = nativePlaybackIntent();
-    await sought;
-    if (!roomPlaying && active() && currentNativePlaybackIntent(ticket)) await play();
-  };
-  const seekRoomToRatio = (ratio: number) => {
-    if (!active() || !roomDuration) return;
-    const target = Math.max(0, Math.min(1, ratio)) * roomDuration;
-    if (!isThisMixPlaying) { void playMix(false, target); return; }
-    void seekTo(target);
+    if (!active()) return;
+    setSelectedPosition(0); setSeekDraft(isThisMixPlaying ? {seconds:0,until:Date.now()+2000} : null);
+    if (!isThisMixPlaying) return;
+    try {
+      const stopped = pause(); const ticket = nativePlaybackIntent(); await stopped;
+      if (active() && currentNativePlaybackIntent(ticket)) await seekTo(0);
+    } catch { if (active()) setPlaybackError('The mix could not stop. Please try again.'); }
   };
   const requestTrackId = async () => {
     if (!mix || requestBusy || !activePublic()) return;
@@ -302,782 +285,24 @@ function MixDetailContent({ reference, accessKey }: { reference: string; accessK
     finally { if (alive.current) setCommentBusy(false); }
   };
 
-  if (isLandscape && mix) {
-    return (
-      <View style={styles.roomScreen}>
-        <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} hidden />
-        <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.roomArtPane}>
-          {mix.cover_url && !coverFailed ? (
-            <Image source={{ uri: mix.cover_url }} style={styles.roomArt} resizeMode="cover" onError={() => setCoverFailed(true)} />
-          ) : (
-            <MaterialIcons name="headphones" size={64} color={theme.colors.accentText} />
-          )}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            onPress={() => router.back()}
-            style={styles.roomBack}
-          >
-            <MaterialIcons name="chevron-left" size={26} color={theme.colors.mediaText} />
-          </Pressable>
-        </View>
-        <View style={styles.roomPane}>
-          <Text style={styles.roomEyebrow}>{privacyLabel || 'LISTENING ROOM'}</Text>
-          {coverFailed ? <Pressable accessibilityRole="button" onPress={reloadCover}><Text style={styles.roomDataError}>Reload artwork</Text></Pressable> : null}
-          <Text style={styles.roomTitle} numberOfLines={2}>{mix.title || 'Untitled mix'}</Text>
-          <Text style={styles.roomMeta}>
-            {[mix.city, formatDuration(mix.duration_seconds), `${formatCompact(mix.play_count)} plays`]
-              .filter(Boolean)
-              .join('  ·  ')
-              .toUpperCase()}
-          </Text>
-          <View style={styles.roomWaveRow}>
-            {Array.from({ length: 52 }).map((_, index) => {
-              const wave = Math.abs(Math.sin((index + 4) * 1.35)) * 0.82 + 0.18;
-              const played = index / 52 <= playedRatio;
-              return (
-                <View
-                  key={index}
-                  style={{
-                    width: 3,
-                    borderRadius: 1.5,
-                    height: Math.max(5, wave * 44),
-                    backgroundColor: played ? theme.colors.accentFill : theme.colors.borderStrong,
-                  }}
-                />
-              );
-            })}
-          </View>
-          <View style={styles.roomTimeRow}>
-            <Text style={styles.roomTime}>{isThisMixPlaying ? formatDuration(progress.position) : '0:00'}</Text>
-            <Text style={styles.roomTime}>{formatDuration(mix.duration_seconds)}</Text>
-          </View>
-          <View style={styles.roomControls}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={startingPlayback ? 'Starting mix' : isThisMixPlaying && isPlaying ? 'Pause mix' : 'Play mix'}
-              accessibilityState={{ busy: startingPlayback, disabled: startingPlayback }}
-              disabled={startingPlayback}
-              onPress={toggleRoomPlayback}
-              style={({ pressed }) => [styles.roomPlay, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}
-            >
-              {startingPlayback
-                ? <ActivityIndicator color={theme.colors.onAccent} />
-                : <MaterialIcons name={isThisMixPlaying && isPlaying ? 'pause' : 'play-arrow'} size={38} color={theme.colors.onAccent} />}
-            </Pressable>
-            {publicMix ? <><Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Save mix"
-              onPress={saveMix}
-              style={({ pressed }) => [styles.roomGhost, pressed && { opacity: 0.86 }]}
-            >
-              <MaterialIcons name="library-music" size={22} color={theme.colors.text} />
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Share mix"
-              onPress={shareMix}
-              style={({ pressed }) => [styles.roomGhost, pressed && { opacity: 0.86 }]}
-            >
-              <MaterialIcons name="ios-share" size={21} color={theme.colors.text} />
-            </Pressable></> : null}
-            {canDownload ? <Pressable accessibilityRole="button" accessibilityLabel="Download mix" accessibilityState={{ busy: downloading, disabled: downloading }} disabled={downloading} onPress={() => void downloadMix()} style={styles.roomGhost}>
-              {downloading ? <ActivityIndicator color={theme.colors.text} /> : <MaterialIcons name="file-download" size={22} color={theme.colors.text} />}
-            </Pressable> : null}
-          </View>
-          {playbackError ? <Text accessibilityRole="alert" style={styles.playbackError}>{playbackError}</Text> : null}
-          {detailState.tracklistLoading ? <ActivityIndicator accessibilityLabel="Loading tracklist" color={theme.colors.accentFill} /> : null}
-          {detailState.tracklistError ? <Pressable accessibilityRole="button" onPress={() => void detailState.retryTracklist()}><Text style={styles.roomDataError}>Tracklist could not load. Try again.</Text></Pressable> : null}
-          {tracklist.length ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.roomTracklist}
-            >
-              {tracklist.map((item) => (
-                <Pressable
-                  key={item.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Jump to ${item.raw_title || `track ${item.position}`}`}
-                  onPress={() => void playAt(item.start_seconds || 0)}
-                  style={({ pressed }) => [styles.roomTrackChip, pressed && { opacity: 0.86 }]}
-                >
-                  <Text style={styles.roomTrackNumber}>{String(item.position).padStart(2, '0')}</Text>
-                  <Text style={styles.roomTrackTitle} numberOfLines={1}>
-                    {item.raw_title || `Track ${item.position}`}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          ) : null}
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.screen}>
-      <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
-      <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-
-        {loading ? (
-          <View style={styles.loading}>
-            <ActivityIndicator color={theme.colors.accentFill} />
-          </View>
-        ) : null}
-
-        {mix ? (
-          <PortraitListeningRoom
-            mix={mix}
-            publicMix={publicMix}
-            privacyLabel={privacyLabel}
-            coverFailed={coverFailed}
-            onCoverError={() => setCoverFailed(true)}
-            onReloadCover={reloadCover}
-            tracklistLoading={detailState.tracklistLoading}
-            tracklistError={detailState.tracklistError}
-            onRetryTracklist={() => void detailState.retryTracklist()}
-            onRetrySocial={() => setSocialRetry(value => value + 1)}
-            canDownload={canDownload}
-            downloading={downloading}
-            onDownload={() => void downloadMix()}
-            tracklist={tracklist}
-            comments={comments}
-            trackIdRequests={trackIdRequests}
-            profileNames={profileNames}
-            roomDataError={roomDataError}
-            roomPlaying={roomPlaying}
-            startingPlayback={startingPlayback || (isThisMixPlaying && isBuffering)}
-            playbackError={playbackError}
-            playedRatio={playedRatio}
-            roomSecond={roomSecond}
-            roomDuration={roomDuration}
-            vinylRotation={vinylRotation}
-            tonearmEngaged={tonearmEngaged}
-            saving={saving}
-            requestBusy={requestBusy}
-            commentBusy={commentBusy}
-            commentValue={commentValue}
-            onCommentValueChange={setCommentValue}
-            onClose={() => (router.canGoBack() ? router.back() : router.replace('/mixes' as any))}
-            onTogglePlayback={toggleRoomPlayback}
-            onStopPlayback={() => void stopRoomPlayback()}
-            onSeekRatio={seekRoomToRatio}
-            onRewind={() => seekRoomToRatio(roomDuration ? Math.max(0, roomSecond - 15) / roomDuration : 0)}
-            onForward={() => seekRoomToRatio(roomDuration ? Math.min(roomDuration, roomSecond + 15) / roomDuration : 0)}
-            onSave={() => void saveMix()}
-            onRequestTrackId={() => void requestTrackId()}
-            onShare={() => void shareMix()}
-            onPostToCommunity={() => { if (activePublic()) router.push({ pathname: '/create-post', params: { attachmentType: 'mix', mixId: mix.id, type: 'post' } } as any); }}
-            onPostComment={() => void postRoomComment()}
-            onTrackPress={(item) => void playAt(item.start_seconds || 0)}
-          />
-        ) : !loading ? (
-          <RecoveryState
-            eyebrow={detailState.phase === 'error' ? 'CONNECTION INTERRUPTED' : 'ROOM CLOSED'}
-            title={detailState.phase === 'error' ? 'This mix could not load' : 'This mix is unavailable'}
-            body={detailState.phase === 'error' ? 'Check your connection and try again.' : 'The link may have expired, or you may need access from the creator.'}
-            icon="headphones"
-            primaryLabel="Try again"
-            onPrimary={() => void detailState.retry()}
-            secondaryLabel="Explore mixes"
-            onSecondary={() => router.replace('/mixes' as any)}
-          />
-        ) : null}
-      </ScrollView>
-    </View>
-  );
-}
-
-function formatRoomTime(seconds?: number | null) {
-  const total = Math.max(0, Math.floor(Number(seconds ?? 0)));
-  const minutes = Math.floor(total / 60);
-  const remainder = total % 60;
-  return `${minutes}:${remainder.toString().padStart(2, '0')}`;
-}
-
-type PortraitListeningRoomProps = {
-  publicMix: boolean;
-  privacyLabel: string;
-  coverFailed: boolean;
-  onCoverError: () => void;
-  onReloadCover: () => void;
-  tracklistLoading: boolean;
-  tracklistError: boolean;
-  onRetryTracklist: () => void;
-  onRetrySocial: () => void;
-  canDownload: boolean;
-  downloading: boolean;
-  onDownload: () => void;
-  mix: MixItem;
-  tracklist: MixTrackItem[];
-  comments: MixCommentRow[];
-  trackIdRequests: TrackIdRequestRow[];
-  profileNames: Record<string, string>;
-  roomDataError: string | null;
-  roomPlaying: boolean;
-  startingPlayback: boolean;
-  playbackError: string | null;
-  playedRatio: number;
-  roomSecond: number;
-  roomDuration: number;
-  vinylRotation: Animated.Value;
-  tonearmEngaged: boolean;
-  saving: boolean;
-  requestBusy: boolean;
-  commentBusy: boolean;
-  commentValue: string;
-  onCommentValueChange: (value: string) => void;
-  onClose: () => void;
-  onTogglePlayback: () => void;
-  onStopPlayback: () => void;
-  onSeekRatio: (ratio: number) => void;
-  onRewind: () => void;
-  onForward: () => void;
-  onSave: () => void;
-  onRequestTrackId: () => void;
-  onShare: () => void;
-  onPostToCommunity: () => void;
-  onPostComment: () => void;
-  onTrackPress: (item: MixTrackItem) => void;
-};
-
-function PortraitListeningRoom({
-  publicMix, privacyLabel, coverFailed, onCoverError, onReloadCover,
-  tracklistLoading, tracklistError, onRetryTracklist, onRetrySocial,
-  canDownload, downloading, onDownload,
-  mix,
-  tracklist,
-  comments,
-  trackIdRequests,
-  profileNames,
-  roomDataError,
-  roomPlaying,
-  startingPlayback,
-  playbackError,
-  playedRatio,
-  roomSecond,
-  roomDuration,
-  vinylRotation,
-  tonearmEngaged,
-  saving,
-  requestBusy,
-  commentBusy,
-  commentValue,
-  onCommentValueChange,
-  onClose,
-  onTogglePlayback,
-  onStopPlayback,
-  onSeekRatio,
-  onRewind,
-  onForward,
-  onSave,
-  onRequestTrackId,
-  onShare,
-  onPostToCommunity,
-  onPostComment,
-  onTrackPress,
-}: PortraitListeningRoomProps) {
-  const theme = usePluggdTheme();
-  const styles = useMixStyles();
-  const vinylSpin = vinylRotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  const tonearmTurn = tonearmEngaged ? `${12 + playedRatio * 12}deg` : '-6deg';
-  const leftVuPulse = useRef(new Animated.Value(0)).current;
-  const rightVuPulse = useRef(new Animated.Value(0)).current;
-  const selector = mix.city ? `${mix.city} selector` : 'PLUGGD selector';
-  const bpm = Number((mix as MixItem & { bpm_min?: number | null }).bpm_min ?? 0);
-
-  useEffect(() => {
-    leftVuPulse.stopAnimation();
-    rightVuPulse.stopAnimation();
-
-    if (!roomPlaying) {
-      leftVuPulse.setValue(0);
-      rightVuPulse.setValue(0);
-      return;
+  return <View style={{flex:1,backgroundColor:theme.colors.background}}>
+    <StatusBar style={theme.scheme === 'light' ? 'dark' : 'light'} />
+    <Stack.Screen options={{headerShown:false}} />
+    {mix && restoredMix === mix.id ? <ListeningRoomScreen key={`${identity.key}|${mix.id}`} sessionKey={identity.key} mix={mix} publicMix={publicMix} privacyLabel={privacyLabel}
+      position={roomPosition} duration={roomDuration} playing={roomPlaying} engaged={tonearmEngaged}
+      starting={startingPlayback} playbackError={playbackError}
+      onToggle={toggleRoomPlayback} onStop={stopRoomPlayback} onSeek={seekRoom} isCurrent={active}
+      onClose={() => router.canGoBack() ? router.back() : router.replace('/mixes' as any)}
+      tracklist={tracklist} tracklistLoading={detailState.tracklistLoading} tracklistError={detailState.tracklistError} onRetryTracklist={() => void detailState.retryTracklist()}
+      social={social} onLike={()=>void changeSocial('like')} onSave={()=>void changeSocial('save')} onShare={()=>void shareMix()}
+      canDownload={canDownload} downloading={downloading} onDownload={()=>void downloadMix()}
+      onPostToCommunity={()=>{if(activePublic())router.push({pathname:'/create-post',params:{attachmentType:'mix',mixId:mix.id,type:'post'}} as any);}}
+      comments={comments} requests={trackIdRequests} profileNames={profileNames} roomDataError={roomDataError} onRetryRoom={()=>setSocialRetry(n=>n+1)}
+      commentValue={commentValue} onCommentValue={setCommentValue} commentBusy={commentBusy} onComment={()=>void postRoomComment()} requestBusy={requestBusy} onRequestId={()=>void requestTrackId()}
+    /> : loading || mix ? <View style={{flex:1,alignItems:'center',justifyContent:'center'}}><ActivityIndicator accessibilityLabel="Opening mix" color={theme.colors.accentFill}/></View> : <RecoveryState
+      eyebrow={detailState.phase==='error'?'CONNECTION INTERRUPTED':'ROOM CLOSED'} title={detailState.phase==='error'?'This mix could not load':'This mix is unavailable'}
+      body={detailState.phase==='error'?'Check your connection and try again.':'The link may have expired, or you may need access from the creator.'} icon="headphones"
+      primaryLabel="Try again" onPrimary={()=>void detailState.retry()} secondaryLabel="Explore mixes" onSecondary={()=>router.replace('/mixes' as any)}/>
     }
-
-    const leftLoop = Animated.loop(Animated.sequence([
-      Animated.timing(leftVuPulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      Animated.timing(leftVuPulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-    ]));
-    const rightLoop = Animated.loop(Animated.sequence([
-      Animated.timing(rightVuPulse, { toValue: 1, duration: 820, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      Animated.timing(rightVuPulse, { toValue: 0, duration: 820, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-    ]));
-
-    leftLoop.start();
-    rightLoop.start();
-    return () => {
-      leftLoop.stop();
-      rightLoop.stop();
-    };
-  }, [leftVuPulse, rightVuPulse, roomPlaying]);
-
-  const renderDeckSignal = (side: 'L' | 'R') => {
-    const pulse = side === 'L' ? leftVuPulse : rightVuPulse;
-    const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.03] });
-    const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
-    return (
-      <View
-        accessible
-        accessibilityLabel={`${side === 'L' ? 'Left' : 'Right'} playback activity ${roomPlaying ? 'active' : 'paused'}`}
-        style={styles.vuMeter}
-      >
-        <View pointerEvents="none" style={styles.vuTrack}>
-          <Animated.View
-            style={[
-              styles.vuFill,
-              roomPlaying ? (side === 'L' ? styles.vuFillPlayingLeft : styles.vuFillPlayingRight) : styles.vuFillIdle,
-              roomPlaying && { opacity: pulseOpacity, transform: [{ scaleX: pulseScale }] },
-            ]}
-          >
-            <LinearGradient
-              colors={['#4caf50', '#4caf50', '#e4ed2d', '#ff4437']}
-              locations={[0, 0.54, 0.72, 1]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-          </Animated.View>
-        </View>
-        <Text style={styles.vuLabel}>{side}</Text>
-      </View>
-    );
-  };
-
-  return (
-    <>
-      <View style={styles.portraitRoomHeader}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.portraitRoomEyebrow}>● PLUGGD LISTENING ROOM · SPATIAL SESSION</Text>
-          <Text style={styles.portraitRoomTitle}>{mix.title || 'Untitled mix'}</Text>
-          {privacyLabel ? <Text style={styles.roomMeta}>{privacyLabel}</Text> : null}
-          {coverFailed ? <Pressable accessibilityRole="button" onPress={onReloadCover}><Text style={styles.roomDataError}>Reload artwork</Text></Pressable> : null}
-        </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Close Listening Room" style={styles.closeRoomButton} onPress={onClose}>
-          <MaterialIcons name="close" size={24} color={theme.colors.text} />
-        </Pressable>
-      </View>
-
-      <View style={styles.deckCard}>
-        <View style={styles.deckTopLine}>
-          <Text style={styles.deckAcidLabel}>DIRECT DRIVE · PLG-01</Text>
-          <Text style={styles.deckState}>{roomPlaying ? 'DECK PLAYING' : 'DECK PAUSED'}</Text>
-        </View>
-        <PlaybackSeekBar
-          ratio={playedRatio}
-          duration={roomDuration}
-          position={roomSecond}
-          onSeek={onSeekRatio}
-          accessibilityLabel="Move tonearm through mix"
-          style={styles.turntableStage}
-          showDefaultTrack={false}
-          showThumb={false}
-        >
-          {() => (
-            <>
-              <Animated.View style={[styles.vinyl, { transform: [{ rotate: vinylSpin }] }]}>
-                <View style={styles.vinylGrooveOuter} />
-                <View style={styles.vinylGrooveInner} />
-                <View style={styles.vinylLabel}>
-                  {mix.cover_url && !coverFailed ? (
-                    <Image source={{ uri: mix.cover_url }} style={styles.vinylLabelImage} onError={onCoverError} />
-                  ) : (
-                    <MaterialIcons name="headphones" size={32} color="#f8eddc" />
-                  )}
-                </View>
-                <View style={styles.vinylPin} />
-              </Animated.View>
-              <View pointerEvents="none" style={styles.tonearmRest}>
-                <View style={styles.tonearmRestPost} />
-                <View style={styles.tonearmRestCradle} />
-              </View>
-              <View pointerEvents="none" style={[styles.tonearm, { transform: [{ rotate: tonearmTurn }] }]}>
-                <View style={styles.tonearmPivot} />
-                <View style={styles.tonearmUpperBar} />
-                <View style={styles.tonearmElbow}>
-                  <View style={styles.tonearmElbowJoint} />
-                  <View style={styles.tonearmLowerBar} />
-                  <View style={styles.tonearmHead}>
-                    <View style={styles.tonearmStylus} />
-                  </View>
-                </View>
-              </View>
-            </>
-          )}
-        </PlaybackSeekBar>
-        <View style={styles.deckMetersRow}>
-          {renderDeckSignal('L')}
-          <Pressable accessibilityRole="button" accessibilityLabel="Stop mix and return to start" style={styles.deckStop} onPress={onStopPlayback}>
-            <MaterialIcons name="stop" size={18} color={theme.colors.text} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={startingPlayback ? 'Starting mix' : roomPlaying ? 'Pause mix' : 'Play mix'}
-            accessibilityState={{ busy: startingPlayback, disabled: startingPlayback }}
-            disabled={startingPlayback}
-            style={styles.deckPlay}
-            onPress={onTogglePlayback}
-          >
-            {startingPlayback
-              ? <ActivityIndicator color="#1b1005" size="small" />
-              : <MaterialIcons name={roomPlaying ? 'pause' : 'play-arrow'} size={28} color="#1b1005" />}
-          </Pressable>
-          {renderDeckSignal('R')}
-        </View>
-      </View>
-
-      <View style={styles.nowSpinningCard}>
-        <View style={styles.nowSpinningHead}>
-          <Text style={styles.deckAcidLabel}>NOW SPINNING</Text>
-          <Text style={styles.deckState}>MIX 01 / 01</Text>
-        </View>
-        <Text style={styles.selectorLine}>{`${selector}${mix.city ? ` · ${mix.city}` : ''}`.toUpperCase()}</Text>
-        <View style={styles.nowSpinningIdentity}>
-          <View style={styles.nowSpinningThumb}>
-            {mix.cover_url && !coverFailed ? <Image source={{ uri: mix.cover_url }} style={styles.nowSpinningThumbImage} onError={onCoverError} /> : <MaterialIcons name="headphones" size={30} color={theme.colors.accentText} />}
-          </View>
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.nowSpinningTitle}>{mix.title || 'Untitled mix'}</Text>
-            <Text style={styles.nowSpinningMeta}>{[selector, mix.city, bpm > 0 ? `${bpm} BPM` : 'BPM TBC'].filter(Boolean).join(' · ')}</Text>
-          </View>
-        </View>
-
-        <View style={styles.wavePanel}>
-          <View style={styles.waveHead}>
-            <Text style={styles.waveLabel}>ROOM WAVEFORM</Text>
-            <Text style={styles.waveLabel}>{publicMix ? 'TIMESTAMPED TRACK IDS · COMMUNITY SYNCED' : 'PRIVATE LISTENING SESSION'}</Text>
-          </View>
-          <View style={styles.waveBars}>
-            {Array.from({ length: 42 }).map((_, index) => {
-              const level = 8 + Math.abs(Math.sin((index + 2) * 1.17)) * 34;
-              return <View key={index} style={[styles.waveBar, { height: level, backgroundColor: index / 42 <= playedRatio ? '#ff761c' : 'rgba(248,237,220,0.2)' }]} />;
-            })}
-          </View>
-          <PlaybackSeekBar
-            ratio={playedRatio}
-            duration={roomDuration}
-            position={roomSecond}
-            onSeek={onSeekRatio}
-            accessibilityLabel="Seek mix"
-            style={styles.progressSeek}
-            trackStyle={styles.progressRail}
-            fillStyle={styles.progressFill}
-            thumbStyle={styles.progressThumb}
-          />
-          <View style={styles.roomTimeRow}>
-            <Text style={styles.roomTime}>{formatRoomTime(roomSecond)}</Text>
-            <Text style={styles.roomTime}>{formatRoomTime(roomDuration)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.transportRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Rewind 15 seconds" style={styles.transportSmall} onPress={onRewind}>
-            <MaterialIcons name="replay-10" size={22} color={theme.colors.text} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={roomPlaying ? 'Pause mix' : 'Play mix'} accessibilityState={{ busy: startingPlayback, disabled: startingPlayback }} disabled={startingPlayback} style={styles.transportPlay} onPress={onTogglePlayback}>
-            <MaterialIcons name={roomPlaying ? 'pause' : 'play-arrow'} size={28} color={theme.colors.onAccent} />
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Forward 15 seconds" style={styles.transportSmall} onPress={onForward}>
-            <MaterialIcons name="forward-10" size={22} color={theme.colors.text} />
-          </Pressable>
-        </View>
-
-        {publicMix ? <View style={styles.roomActionRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Save mix" accessibilityState={{ busy: saving }} style={styles.roomAction} onPress={onSave} disabled={saving}>
-            <MaterialIcons name="favorite-border" size={18} color={theme.colors.text} />
-            <Text style={styles.roomActionText}>{saving ? 'Saving' : 'Save'}</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Request Track ID" accessibilityState={{ busy: requestBusy }} style={styles.roomAction} onPress={onRequestTrackId} disabled={requestBusy}>
-            <MaterialIcons name="music-note" size={18} color={theme.colors.text} />
-            <Text style={styles.roomActionText}>{requestBusy ? 'Requesting' : 'Request ID'}</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel="Share mix" style={styles.roomAction} onPress={onShare}>
-            <MaterialIcons name="ios-share" size={18} color={theme.colors.text} />
-            <Text style={styles.roomActionText}>Share</Text>
-          </Pressable>
-        </View> : null}
-        {canDownload ? <Pressable accessibilityRole="button" accessibilityLabel="Download mix" accessibilityState={{ busy: downloading, disabled: downloading }} disabled={downloading} style={styles.roomAction} onPress={onDownload}>
-          <MaterialIcons name="file-download" size={18} color={theme.colors.text} />
-          <Text style={styles.roomActionText}>{downloading ? 'Opening download' : 'Download mix'}</Text>
-        </Pressable> : null}
-        {playbackError ? <Text accessibilityRole="alert" style={styles.playbackError}>{playbackError}</Text> : null}
-      </View>
-
-      <View style={styles.roomPanel}>
-        <View style={styles.panelHead}>
-          <Text style={styles.panelEyebrow}>TONIGHT'S SELECTION</Text>
-          <Text style={styles.panelMeta}>{publicMix ? 'PUBLIC TRACKLIST' : 'TRACKLIST'}</Text>
-        </View>
-        {tracklistLoading ? <ActivityIndicator accessibilityLabel="Loading tracklist" color={theme.colors.accentFill} /> : null}
-        {tracklistError ? <Pressable accessibilityRole="button" onPress={onRetryTracklist}><Text style={styles.roomDataError}>Tracklist could not load. Try again.</Text></Pressable> : null}
-        {!tracklistLoading && !tracklistError && tracklist.length === 0 ? <Text style={styles.emptyText}>No tracklist yet.</Text> : null}
-        {tracklist.map((item) => (
-          <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Jump to ${item.raw_title || `track ${item.position}`}`} onPress={() => onTrackPress(item)} style={styles.tracklistRow}>
-            <Text style={styles.tracklistPosition}>{String(item.position).padStart(2, '0')}</Text>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.tracklistTitle} numberOfLines={1}>{item.raw_title || `Track ${item.position}`}</Text>
-              <Text style={styles.tracklistArtist} numberOfLines={1}>{item.raw_artist || 'Artist not supplied'}</Text>
-            </View>
-            <Text style={styles.tracklistTime}>{formatRoomTime(item.start_seconds)}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {publicMix ? <><View style={styles.roomPanel}>
-        <View style={styles.panelHead}>
-          <Text style={styles.panelEyebrow}>ROOM PULSE</Text>
-          <Text style={styles.panelMeta}>LIVE COMMUNITY</Text>
-        </View>
-        <View style={styles.pulseGrid}>
-          {[
-            ['PLAYS', formatCompact(mix.play_count)],
-            ['SAVES', formatCompact(mix.save_count)],
-            ['TRACKS', String(tracklist.length)],
-            ['IDS', String(trackIdRequests.length)],
-          ].map(([label, value]) => (
-            <View key={label} style={styles.pulseCell}><Text style={styles.pulseValue}>{value}</Text><Text style={styles.pulseLabel}>{label}</Text></View>
-          ))}
-        </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Post mix to community" style={styles.communityPostButton} onPress={onPostToCommunity}>
-          <MaterialIcons name="post-add" size={18} color={theme.colors.text} />
-          <Text style={styles.communityPostText}>Post this room to Community</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.roomPanel}>
-        <View style={styles.panelHead}>
-          <Text style={styles.panelEyebrow}>LISTENING ROOM</Text>
-          <Text style={styles.panelMeta}>TIMESTAMPED LIVE CONVERSATION</Text>
-        </View>
-        {roomDataError ? <View><Text accessibilityRole="alert" style={styles.roomDataError}>{roomDataError}</Text><Pressable accessibilityRole="button" onPress={onRetrySocial}><Text style={styles.roomActionText}>Retry room activity</Text></Pressable></View> : null}
-        <View style={styles.pinnedNote}>
-          <Text style={styles.pinnedLabel}>PINNED BY CREATOR</Text>
-          <Text style={styles.pinnedBody}>Drop timestamped reactions or request an ID at {formatRoomTime(roomSecond)}.</Text>
-        </View>
-        {comments.length === 0 ? (
-          <Text style={styles.emptyText}>Authenticated listeners can start the room thread from the current timestamp.</Text>
-        ) : comments.slice(0, 20).map((comment) => (
-          <View key={comment.id} style={styles.commentRow}>
-            <View style={styles.commentAvatar}><Text style={styles.commentAvatarText}>{(profileNames[comment.user_id] || 'P').slice(0, 1).toUpperCase()}</Text></View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <View style={styles.commentMetaRow}>
-                <Text style={styles.commentName}>{profileNames[comment.user_id] || 'PLUGGD listener'}</Text>
-                <Text style={styles.commentTime}>{formatRoomTime(comment.timestamp_seconds || 0)}</Text>
-              </View>
-              <Text style={styles.commentBody}>{comment.body || ''}</Text>
-            </View>
-          </View>
-        ))}
-
-        <View style={styles.trackIdBox}>
-          <Text style={styles.trackIdBoxTitle}>TRACK ID REQUESTS</Text>
-          {trackIdRequests.length === 0 ? <Text style={styles.emptyText}>No Track ID requests yet.</Text> : trackIdRequests.slice(0, 8).map((request) => (
-            <View key={request.id} style={styles.trackIdRow}>
-              <Text style={styles.trackIdTime}>{formatRoomTime(request.timestamp_seconds)}</Text>
-              <Text style={styles.trackIdStatus}>{request.status.toUpperCase()}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.commentComposer}>
-          <TextInput
-            value={commentValue}
-            onChangeText={onCommentValueChange}
-            placeholder="Add a timestamped room comment"
-            placeholderTextColor={theme.colors.textMuted}
-            style={styles.commentInput}
-            multiline
-            maxLength={500}
-          />
-          <Pressable accessibilityRole="button" accessibilityLabel="Post comment" accessibilityState={{ busy: commentBusy }} style={styles.commentSend} onPress={onPostComment} disabled={commentBusy || !commentValue.trim()}>
-            {commentBusy ? <ActivityIndicator color={theme.colors.onAccent} size="small" /> : <Text style={styles.commentSendText}>Send</Text>}
-          </Pressable>
-        </View>
-      </View></> : null}
-    </>
-  );
-}
-
-function useMixStyles() {
-  const theme = usePluggdTheme();
-  return useMemo(() => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.colors.background },
-  roomScreen: { flex: 1, flexDirection: 'row', backgroundColor: theme.colors.background },
-  roomArtPane: { width: '42%', backgroundColor: theme.colors.artworkBase, alignItems: 'center', justifyContent: 'center' },
-  roomArt: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  roomBack: {
-    position: 'absolute',
-    top: 14,
-    left: 14,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: theme.colors.mediaScrim,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roomPane: { flex: 1, paddingHorizontal: 28, paddingVertical: 20, justifyContent: 'center', gap: 8 },
-  roomEyebrow: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 2.2, color: theme.colors.accentText },
-  roomTitle: { fontFamily: edFonts.serif, fontSize: 32, lineHeight: 35, color: theme.colors.text, letterSpacing: -0.5 },
-  roomMeta: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.6, color: theme.colors.textMuted },
-  roomWaveRow: { flexDirection: 'row', alignItems: 'center', gap: 3, height: 48, marginTop: 12, overflow: 'hidden' },
-  roomTimeRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  roomTime: { fontFamily: edFonts.mono, fontSize: 10, color: theme.colors.textMuted, fontVariant: ['tabular-nums'] },
-  roomControls: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 10 },
-  roomPlay: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: theme.colors.accentFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roomGhost: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: theme.colors.controlBorder,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roomTracklist: { gap: 8, paddingTop: 14, paddingRight: 20 },
-  roomTrackChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minHeight: 44,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.controlBorder,
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: 13,
-    maxWidth: 230,
-  },
-  roomTrackNumber: { fontFamily: edFonts.mono, fontSize: 9.5, color: theme.colors.accentText },
-  roomTrackTitle: { fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5, color: theme.colors.text, flexShrink: 1 },
-
-  /* Portrait Listening Room — current mobile-web record-deck translation */
-  portraitRoomHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  portraitRoomEyebrow: { fontFamily: edFonts.mono, fontSize: 9.5, lineHeight: 14, letterSpacing: 1.6, color: theme.colors.textSecondary },
-  portraitRoomTitle: { marginTop: 4, fontFamily: edFonts.serif, fontSize: 27, lineHeight: 29, letterSpacing: -0.7, color: theme.colors.text },
-  closeRoomButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' },
-  deckCard: { borderRadius: 20, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceRaised, padding: 14, overflow: 'hidden' },
-  deckTopLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  deckAcidLabel: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 1.5, color: theme.colors.accentText },
-  deckState: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.2, color: theme.colors.textMuted },
-  turntableStage: { height: 304, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  vinyl: { width: 270, height: 270, borderRadius: 135, backgroundColor: '#050505', borderWidth: 2, borderColor: '#151515', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.72, shadowRadius: 20, shadowOffset: { width: 0, height: 12 } },
-  vinylGrooveOuter: { position: 'absolute', width: 238, height: 238, borderRadius: 119, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  vinylGrooveInner: { position: 'absolute', width: 202, height: 202, borderRadius: 101, borderWidth: 1, borderColor: 'rgba(255,118,28,0.28)' },
-  vinylLabel: { width: 94, height: 94, borderRadius: 47, overflow: 'hidden', backgroundColor: '#24140d', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,118,28,0.52)' },
-  vinylLabelImage: { width: '100%', height: '100%' },
-  vinylPin: { position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: '#d7c5ab', borderWidth: 1, borderColor: '#4e402f' },
-  tonearmRest: { position: 'absolute', right: 11, top: 128, width: 18, height: 31, alignItems: 'center', zIndex: 1 },
-  tonearmRestPost: { position: 'absolute', top: 5, width: 4, height: 26, borderRadius: 2, backgroundColor: '#5f554c' },
-  tonearmRestCradle: { width: 18, height: 9, borderLeftWidth: 3, borderRightWidth: 3, borderBottomWidth: 3, borderColor: '#81766b', borderBottomLeftRadius: 5, borderBottomRightRadius: 5 },
-  tonearm: { position: 'absolute', right: 8, top: 30, width: 78, height: 226, transformOrigin: '53px 22px' as any, zIndex: 2 },
-  tonearmPivot: { position: 'absolute', left: 33, top: 2, width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: '#756a5f', backgroundColor: '#171411', zIndex: 1 },
-  tonearmUpperBar: { position: 'absolute', left: 50, top: 22, width: 7, height: 96, borderRadius: 4, backgroundColor: '#928476', zIndex: 2 },
-  tonearmElbow: { position: 'absolute', left: 42, top: 112, width: 24, height: 106, alignItems: 'center', transform: [{ rotate: '8deg' }], transformOrigin: '12px 0px' as any, zIndex: 2 },
-  tonearmElbowJoint: { position: 'absolute', top: -1, width: 9, height: 9, borderRadius: 4.5, backgroundColor: '#928476', zIndex: 2 },
-  tonearmLowerBar: { width: 7, height: 90, borderRadius: 4, backgroundColor: '#928476' },
-  tonearmHead: { width: 26, height: 18, borderRadius: 6, backgroundColor: '#a89b7d', borderWidth: 2, borderColor: '#28231e', marginTop: -5 },
-  tonearmStylus: { position: 'absolute', left: 11, bottom: -8, width: 2, height: 9, borderRadius: 1, backgroundColor: '#d7c5ab', transform: [{ rotate: '-8deg' }] },
-  deckMetersRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 2 },
-  vuMeter: { flex: 1, maxWidth: 108, height: 30, borderRadius: 7, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 8, paddingTop: 7, paddingBottom: 2 },
-  vuTrack: { height: 5, borderRadius: 999, backgroundColor: '#251c18', overflow: 'hidden' },
-  vuFill: { height: '100%', borderRadius: 999, overflow: 'hidden', transformOrigin: 'left center' as any },
-  vuFillIdle: { width: '18%' },
-  vuFillPlayingLeft: { width: '82%' },
-  vuFillPlayingRight: { width: '68%' },
-  vuLabel: { marginTop: 4, textAlign: 'center', fontFamily: edFonts.mono, fontSize: 8, lineHeight: 9, color: '#776f67' },
-  deckStop: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' },
-  deckPlay: { width: 58, height: 58, borderRadius: 29, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', shadowColor: '#ff761c', shadowOpacity: 0.34, shadowRadius: 10 },
-  nowSpinningCard: { borderRadius: 20, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceRaised, padding: 14, gap: 13 },
-  nowSpinningHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  selectorLine: { fontFamily: edFonts.mono, fontSize: 9.5, letterSpacing: 1.4, color: theme.colors.textSecondary, textAlign: 'center' },
-  nowSpinningIdentity: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  nowSpinningThumb: { width: 82, height: 82, borderRadius: 7, overflow: 'hidden', backgroundColor: theme.colors.artworkBase, alignItems: 'center', justifyContent: 'center' },
-  nowSpinningThumbImage: { width: '100%', height: '100%' },
-  nowSpinningTitle: { fontFamily: edFonts.serif, fontSize: 24, lineHeight: 26, color: theme.colors.text, letterSpacing: -0.55 },
-  nowSpinningMeta: { marginTop: 5, fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, color: theme.colors.textSecondary },
-  wavePanel: { borderRadius: 12, backgroundColor: '#0d0a08', padding: 11, gap: 8 },
-  waveHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  waveLabel: { flex: 1, fontFamily: edFonts.mono, fontSize: 8.5, lineHeight: 12, letterSpacing: 1.15, color: theme.colors.textMuted },
-  waveBars: { height: 48, flexDirection: 'row', alignItems: 'center', gap: 2, overflow: 'hidden' },
-  waveBar: { flex: 1, minWidth: 2, borderRadius: 1 },
-  progressSeek: { height: 28, justifyContent: 'center' },
-  progressRail: { height: 4, borderRadius: 2, backgroundColor: 'rgba(248,237,220,0.13)' },
-  progressFill: { height: 4, minWidth: 3, borderRadius: 2, backgroundColor: '#ff761c' },
-  progressThumb: { width: 13, height: 13, borderRadius: 6.5, backgroundColor: '#f8eddc', borderWidth: 2, borderColor: '#ff761c' },
-  transportRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 15 },
-  transportSmall: { width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center' },
-  transportPlay: { width: 58, height: 58, borderRadius: 29, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
-  roomActionRow: { flexDirection: 'row', gap: 8 },
-  roomAction: { flex: 1, minWidth: 0, minHeight: 46, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5, paddingHorizontal: 7 },
-  roomActionText: { flexShrink: 1, fontFamily: edFonts.bodyBold, fontSize: 11, color: theme.colors.text, textAlign: 'center' },
-  roomPanel: { borderRadius: 16, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, padding: 14, gap: 12 },
-  panelHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  panelEyebrow: { fontFamily: edFonts.mono, fontSize: 10, letterSpacing: 1.5, color: theme.colors.accentText },
-  panelMeta: { flexShrink: 1, textAlign: 'right', fontFamily: edFonts.mono, fontSize: 8.5, letterSpacing: 1.1, color: theme.colors.textMuted },
-  tracklistRow: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 10, borderTopWidth: 1, borderColor: theme.colors.divider, paddingVertical: 8 },
-  tracklistPosition: { width: 26, fontFamily: edFonts.mono, fontSize: 10, color: theme.colors.accentText },
-  tracklistTitle: { fontFamily: edFonts.bodyBold, fontSize: 13, color: theme.colors.text },
-  tracklistArtist: { marginTop: 2, fontFamily: edFonts.bodyMedium, fontSize: 11.5, color: theme.colors.textSecondary },
-  tracklistTime: { fontFamily: edFonts.mono, fontSize: 9.5, color: theme.colors.textMuted },
-  pulseGrid: { flexDirection: 'row', gap: 7 },
-  pulseCell: { flex: 1, minWidth: 0, minHeight: 62, borderRadius: 10, backgroundColor: theme.colors.surfaceRaised, alignItems: 'center', justifyContent: 'center' },
-  pulseValue: { fontFamily: edFonts.serif, fontSize: 21, color: theme.colors.text },
-  pulseLabel: { marginTop: 3, fontFamily: edFonts.mono, fontSize: 8, letterSpacing: 1.1, color: theme.colors.textMuted },
-  communityPostButton: { minHeight: 46, borderRadius: 9, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceRaised, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  communityPostText: { fontFamily: edFonts.bodyBold, fontSize: 12.5, color: theme.colors.text },
-  roomDataError: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, color: theme.colors.danger },
-  pinnedNote: { borderRadius: 10, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceRaised, padding: 12, gap: 4 },
-  pinnedLabel: { fontFamily: edFonts.mono, fontSize: 8.5, letterSpacing: 1.2, color: theme.colors.accentText },
-  pinnedBody: { fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, color: theme.colors.textSecondary },
-  commentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderTopWidth: 1, borderColor: theme.colors.divider, paddingTop: 12 },
-  commentAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center' },
-  commentAvatarText: { fontFamily: edFonts.bodyBlack, fontSize: 12, color: theme.colors.onAccent },
-  commentMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  commentName: { flex: 1, fontFamily: edFonts.bodyBold, fontSize: 12.5, color: theme.colors.text },
-  commentTime: { fontFamily: edFonts.mono, fontSize: 9, color: theme.colors.accentText },
-  commentBody: { marginTop: 3, fontFamily: edFonts.bodyMedium, fontSize: 12.5, lineHeight: 18, color: theme.colors.textSecondary },
-  trackIdBox: { borderRadius: 10, backgroundColor: theme.colors.surfaceRaised, padding: 11, gap: 8 },
-  trackIdBoxTitle: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1.3, color: theme.colors.text },
-  trackIdRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, borderTopWidth: 1, borderColor: theme.colors.divider },
-  trackIdTime: { fontFamily: edFonts.mono, fontSize: 10, color: theme.colors.accentText },
-  trackIdStatus: { fontFamily: edFonts.mono, fontSize: 9, letterSpacing: 1, color: theme.colors.textMuted },
-  commentComposer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
-  commentInput: { flex: 1, minHeight: 48, maxHeight: 120, borderRadius: 9, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surfaceRaised, paddingHorizontal: 11, paddingVertical: 10, fontFamily: edFonts.bodyMedium, fontSize: 13, color: theme.colors.text },
-  commentSend: { minWidth: 66, minHeight: 48, borderRadius: 9, backgroundColor: theme.colors.accentFill, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  commentSendText: { fontFamily: edFonts.bodyBlack, fontSize: 12, color: theme.colors.onAccent },
-
-  content: { padding: 12, paddingTop: 52, paddingBottom: 220, gap: 14 },
-  backButton: { width: 44, height: 44, borderRadius: 8, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.controlBorder, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  loading: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
-  empty: { minHeight: 260, alignItems: 'center', justifyContent: 'center' },
-  hero: { height: 310, borderRadius: 6, backgroundColor: theme.colors.artworkBase, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  heroImage: { width: '100%', height: '100%' },
-  eyebrow: { color: theme.colors.accentText, fontSize: 12, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', textTransform: 'uppercase', marginTop: 18 },
-  title: { color: theme.colors.text, fontSize: 34, lineHeight: 39, fontFamily: pluggdFonts.displayExtraBold, fontWeight: '800', marginTop: 5 },
-  subtitle: { color: theme.colors.textSecondary, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700', marginTop: 5 },
-  description: { color: theme.colors.textSecondary, fontSize: 15, lineHeight: 22, fontFamily: pluggdFonts.satoshiMedium, fontWeight: '600', marginTop: 18 },
-  buttonRow: { flexDirection: 'row', gap: 9, marginTop: 20 },
-  primaryButton: { flex: 1.25, height: 54, borderRadius: 5, backgroundColor: theme.colors.accentFill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  playbackError: { color: theme.colors.danger, fontFamily: pluggdFonts.satoshiBold, fontSize: 12.5, lineHeight: 18, marginTop: 10 },
-  primaryButtonText: { color: theme.colors.onAccent, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  secondaryButton: { flex: 0.75, height: 54, borderRadius: 5, borderWidth: 1, borderColor: theme.colors.controlBorder, backgroundColor: theme.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  secondaryButtonText: { color: theme.colors.accentText, fontSize: 16, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  quickActions: { flexDirection: 'row', marginTop: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.divider },
-  quickActionButton: { minHeight: 48, flex: 1, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  quickActionText: { color: theme.colors.accentText, fontSize: 12, fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
-  sectionTitle: { color: theme.colors.text, fontSize: 22, fontFamily: pluggdFonts.displayBold, fontWeight: '700', marginTop: 24, marginBottom: 11 },
-  emptyText: { color: theme.colors.textMuted, fontSize: 14, fontFamily: pluggdFonts.satoshiBold, fontWeight: '700' },
-  }), [theme]);
+  </View>;
 }

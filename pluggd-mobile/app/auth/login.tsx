@@ -33,6 +33,7 @@ import {
   signInWithGoogle,
 } from '../../src/features/auth/google-sign-in';
 import { storePendingAccessCode, validateAccessCode } from '../../src/features/auth/launch-access';
+import { clearPendingSplitReturn, consumePendingSplitReturn } from '../../src/features/studio/splitPendingReturn';
 import { PLUGGD_ORANGE } from '../../src/lib/mobileContent';
 import { supabase } from '../../src/lib/supabase';
 
@@ -79,7 +80,7 @@ export default function Login() {
       if (loginError) {
         setError(loginError.message);
       } else {
-        router.replace('/');
+        router.replace((consumePendingSplitReturn() ?? '/') as any);
       }
     } catch (authError: any) {
       setError(authError?.message ?? 'Unable to sign in.');
@@ -113,7 +114,12 @@ export default function Login() {
     await clearLaunchAccessNotice();
     try {
       const result = await signInWithApple({ minimumAgeConfirmed });
-      router.replace(result.isNewUser ? ('/auth/role' as any) : ('/' as any));
+      if (result.isNewUser) {
+        clearPendingSplitReturn();
+        router.replace('/auth/role' as any);
+      } else {
+        router.replace((consumePendingSplitReturn() ?? '/') as any);
+      }
     } catch (authError: any) {
       if (!isAppleSignInCancellation(authError)) {
         setError(authError?.message ?? 'Unable to sign in with Apple.');
@@ -140,7 +146,12 @@ export default function Login() {
     await clearLaunchAccessNotice();
     try {
       const result = await signInWithGoogle({ minimumAgeConfirmed });
-      router.replace(result.isNewUser ? ('/auth/role' as any) : ('/' as any));
+      if (result.isNewUser) {
+        clearPendingSplitReturn();
+        router.replace('/auth/role' as any);
+      } else {
+        router.replace((consumePendingSplitReturn() ?? '/') as any);
+      }
     } catch (authError: any) {
       if (!isGoogleSignInCancellation(authError)) {
         setError(authError?.message ?? 'Unable to sign in with Google.');
@@ -181,7 +192,7 @@ export default function Login() {
               accessibilityRole="button"
               accessibilityLabel="Back to Home"
               style={[styles.topButton, { backgroundColor: theme.colors.glassFallback, borderColor: theme.colors.border }]}
-              onPress={() => router.replace('/' as any)}
+              onPress={() => { clearPendingSplitReturn(); router.replace('/' as any); }}
             >
               <MaterialIcons name="home" size={21} color={theme.colors.text} />
               <Text maxFontSizeMultiplier={1.4} style={[styles.topButtonText, { color: theme.colors.text }]}>Home</Text>

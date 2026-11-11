@@ -9,6 +9,7 @@ const path = require("path");
 const config = getSentryExpoConfig(__dirname, {
   includeWebReplay: false,
 });
+config.resolver.assetExts = [...new Set([...config.resolver.assetExts, "html"])];
 const nativeWindConfig = withNativeWind(config, { input: "./global.css" });
 const defaultResolveRequest = nativeWindConfig.resolver.resolveRequest;
 

@@ -43,7 +43,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       UISupportedInterfaceOrientations: ['UIInterfaceOrientationPortrait'],
       'UISupportedInterfaceOrientations~ipad': ['UIInterfaceOrientationPortrait'],
       ITSAppUsesNonExemptEncryption: false,
-      NSCameraUsageDescription: 'PLUGGD uses the camera when you scan an event ticket or create live and profile content.',
+      NSCameraUsageDescription: 'PLUGGD uses the camera to scan split sheet and event ticket QR codes, or create live and profile content.',
       NSLocationWhenInUseUsageDescription:
         'PLUGGD uses your location when you choose nearby music, directions or a Maps signal. Signal coordinates are stored privately; public discovery shows an approximate area or a venue you choose.',
       NSMicrophoneUsageDescription: 'PLUGGD uses the microphone when you record a video or join or host a live audio room.',
@@ -254,7 +254,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-camera',
       {
-        cameraPermission: 'PLUGGD uses the camera when you scan an event ticket or create live and profile content.',
+        cameraPermission: 'PLUGGD uses the camera to scan split sheet and event ticket QR codes, or create live and profile content.',
         microphonePermission: 'PLUGGD uses the microphone when you record a video or join or host a live audio room.',
       },
     ],

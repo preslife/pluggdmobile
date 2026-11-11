@@ -19,6 +19,7 @@ import { toggleSavedContent } from '../src/features/culture/mobileServices';
 import { loadPublicPlaybackMetadata, loadPublishedTrackLyrics, loadReleasePlaybackCollection, playbackIdentity } from '../src/features/playback/publicPlaybackService';
 import { isProtectedMix } from '../src/features/playback/protectedMixPlayback';
 import { mixAccessSession } from '../src/features/playback/mixAccessSession';
+import { useMixSocial } from '../src/features/listeningRoom/useMixSocial';
 import { usePluggdTheme } from '../src/design/usePluggdTheme';
 
 function waveformNumbers(value: unknown): number[] {
@@ -126,6 +127,8 @@ export default function PlayerScreen() {
   // The player is a listening room: rotating the phone enters the wide layout.
   useListeningRoomOrientation();
   const protectedMix = isProtectedMix(currentTrack);
+  const publicMix = Boolean(currentTrack?.mixId && !protectedMix);
+  const mixSocial = useMixSocial(currentTrack?.mixId, publicMix);
   const title = String(currentTrack?.title || 'No track selected');
   const artist = String(currentTrack?.artist || 'PLUGGD');
   const artwork = String(currentTrack?.artwork || '');
@@ -252,12 +255,11 @@ export default function PlayerScreen() {
   };
 
   const handleSave = async () => {
-    if (!currentTrack || saving || isProtectedMix(currentTrack) || latestTrack.current !== currentTrack) return;
+    if (!currentTrack || currentTrack.mixId || saving || isProtectedMix(currentTrack) || latestTrack.current !== currentTrack) return;
     const scope = mixAccessSession.scope();
     const active = () => mounted.current && latestTrack.current === currentTrack && mixAccessSession.current(scope);
     const target = currentTrack.beatId ? { type: 'beat' as const, id: currentTrack.beatId }
-      : currentTrack.releaseId ? { type: 'release' as const, id: currentTrack.releaseId }
-      : currentTrack.mixId ? { type: 'mix' as const, id: currentTrack.mixId } : null;
+      : currentTrack.releaseId ? { type: 'release' as const, id: currentTrack.releaseId } : null;
     if (!target) { router.push('/library' as any); return; }
     selectionHaptic();
     setSaving(true);
@@ -272,6 +274,18 @@ export default function PlayerScreen() {
       Alert.alert(result.saved ? 'Saved' : 'Removed from saved', `${title} ${result.saved ? 'was added to' : 'was removed from'} your library.`);
     } catch { if (active()) Alert.alert('Save failed', 'This item could not be saved. Please try again.'); }
     finally { if (mounted.current) setSaving(false); }
+  };
+
+  const handleMixReaction = async (kind: 'like' | 'save') => {
+    if (!publicMix || !currentTrack?.mixId || latestTrack.current !== currentTrack || mixSocial.busy) return;
+    if (!mixSocial.signedIn) { router.push('/auth/login' as any); return; }
+    const scope = mixAccessSession.scope();
+    try { await (kind === 'like' ? mixSocial.toggleLike() : mixSocial.toggleSave()); }
+    catch {
+      if (mounted.current && latestTrack.current === currentTrack && mixAccessSession.current(scope)) {
+        Alert.alert(kind === 'like' ? 'Like could not save' : 'Mix could not save', 'Please check your connection and try again.');
+      }
+    }
   };
 
   const openPlayerOptions = () => {
@@ -505,13 +519,18 @@ export default function PlayerScreen() {
         </View>
 
         <View style={styles.actionRow}>
-          {!protectedMix ? <><PlayerAction icon="favorite-border" label={saving ? 'Saving' : 'Like'} accessibilityLabel="Like current track" onPress={handleSave} />
+          {!protectedMix ? <>{publicMix ? <>
+            <PlayerAction icon={mixSocial.liked ? 'favorite' : 'favorite-border'} label={mixSocial.liked ? 'Liked' : 'Like'} accessibilityLabel={mixSocial.liked ? 'Unlike this mix' : 'Like this mix'} selected={Boolean(mixSocial.liked)} disabled={mixSocial.busy || mixSocial.loading || !mixSocial.ready} onPress={() => { void handleMixReaction('like'); }} />
+            <PlayerAction icon={mixSocial.saved ? 'bookmark' : 'bookmark-border'} label={mixSocial.saved ? 'Saved' : 'Save'} accessibilityLabel={mixSocial.saved ? 'Remove mix from saved' : 'Save this mix'} selected={Boolean(mixSocial.saved)} disabled={mixSocial.busy || mixSocial.loading || !mixSocial.ready} onPress={() => { void handleMixReaction('save'); }} />
+          </> : <PlayerAction icon="favorite-border" label={saving ? 'Saving' : 'Like'} accessibilityLabel="Like current track" onPress={handleSave} />}
           <PlayerAction icon="send" label="Share" accessibilityLabel="Share current track" onPress={handleShare} />
           <PlayerAction icon="groups" label="Scene" accessibilityLabel="Open track community" onPress={() => { if (!isProtectedMix(latestTrack.current)) router.push(sceneRoute as any); }} />
           <PlayerAction icon="chat-bubble-outline" label="Talk" accessibilityLabel="Open track comments" onPress={() => { if (!isProtectedMix(latestTrack.current)) router.push(talkRoute as any); }} /></> : null}
           <PlayerAction icon="playlist-add" label="Queue" onPress={() => scrollRef.current?.scrollTo({ y: queueOffset.current, animated: true })} />
           {publishedLyrics ? <PlayerAction icon="notes" label="Lyrics" onPress={() => { setLyricsFocused(true); scrollRef.current?.scrollTo({ y: lyricsOffset.current, animated: !reduceMotion }); }} /> : null}
         </View>
+        {publicMix && mixSocial.loading ? <ActivityIndicator color={theme.colors.accentText} accessibilityLabel="Loading mix Like and Save choices" /> : null}
+        {publicMix && mixSocial.error ? <View accessibilityLiveRegion="polite"><Text style={styles.lyricsStatus}>{mixSocial.error}</Text><Pressable accessibilityRole="button" onPress={() => { void mixSocial.retry(); }} style={styles.lyricsRetry}><Text style={styles.lyricsStatus}>Try again</Text></Pressable></View> : null}
 
         {releaseTracks.length > 1 ? (
           <View style={styles.releaseSection}>
@@ -632,14 +651,16 @@ export default function PlayerScreen() {
   );
 }
 
-function PlayerAction({ icon, label, accessibilityLabel, onPress }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; accessibilityLabel?: string; onPress?: () => void }) {
+function PlayerAction({ icon, label, accessibilityLabel, onPress, selected, disabled = false }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; accessibilityLabel?: string; onPress?: () => void; selected?: boolean; disabled?: boolean }) {
   const theme = usePluggdTheme();
   const styles = usePlayerStyles();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel || label}
-      style={({ pressed }) => [styles.playerAction, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}
+      accessibilityState={{ selected, disabled }}
+      disabled={disabled}
+      style={({ pressed }) => [styles.playerAction, disabled && { opacity: 0.5 }, pressed && { opacity: 0.86, transform: [{ scale: 0.985 }] }]}
       onPress={() => {
         selectionHaptic();
         onPress?.();
@@ -750,8 +771,8 @@ function usePlayerStyles() {
   compactPlayButton: { width: 64, height: 64, borderRadius: 32 },
   playButtonFace: { width: 76, height: 76, borderRadius: 38, backgroundColor: '#FF6600', borderWidth: 2, borderColor: '#FFB27F', alignItems: 'center', justifyContent: 'center' },
   compactPlayButtonFace: { width: 64, height: 64, borderRadius: 32 },
-  actionRow: { minHeight: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.controlBorder, marginBottom: 22 },
-  playerAction: { flex: 1, minWidth: 0, minHeight: 70, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 2 },
+  actionRow: { minHeight: 76, flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.controlBorder, marginBottom: 22 },
+  playerAction: { flex: 1, minWidth: 44, minHeight: 70, alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 2 },
   playerActionText: { width: '100%', color: theme.colors.text, fontSize: 11, lineHeight: 14, textAlign: 'center', fontFamily: pluggdFonts.satoshiBlack, fontWeight: '900' },
   queueSection: { marginBottom: 20 },
   releaseSection: { marginBottom: 22 },

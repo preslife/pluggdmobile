@@ -10,9 +10,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,6 +28,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthProvider';
+import { loadHostedSplitSessions } from './splitJoinService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PluggdImage } from '../../components/PluggdImage';
 import { selectionHaptic } from '../../design/haptics';
@@ -319,6 +320,10 @@ export function SplitEngineListPanel({ connectSlug, creatorName, avatarUrl }: { 
           <MaterialIcons name="arrow-forward" size={18} color={theme.colors.onAccent} />
         </Pressable>
       </LinearGradient>
+      <View style={styles.stack}>
+        <PrimaryButton label="Host a session with QR" icon="qr-code" tone="ghost" onPress={() => router.push('/studio/splits/host' as any)} />
+        <PrimaryButton label="Scan a split invitation" icon="qr-code-scanner" tone="ghost" onPress={() => router.push('/split/scan' as any)} />
+      </View>
 
       {query.isLoading ? (
         <View style={styles.loadingBlock}>
@@ -468,6 +473,7 @@ export function SplitCreateScreen() {
     <FocusedScreen title="Choose the work" onRefresh={() => query.refetch()} refreshing={query.isRefetching}>
       <Text style={styles.pageTitle}>Choose the work</Text>
       <Text style={styles.pageLead}>Pick what the split covers. You can only start a sheet on work you own.</Text>
+      <PrimaryButton label="Or host a new song or studio session" icon="qr-code" tone="ghost" onPress={() => router.push('/studio/splits/host' as any)} />
 
       <View style={styles.filterRow}>
         {[{ value: 'all' as const, label: 'All' }, ...SPLIT_CONTENT_TYPES].map((entry) => {
@@ -760,6 +766,7 @@ function SplitAgreementContent() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [drafts, setDrafts] = useState<DraftRow[] | null>(null);
   const [saving, setSaving] = useState(false);
+  const removedUserIds = useRef(new Set<string>());
 
   const query = useQuery({
     queryKey: [...splitDetailKey(agreementId), user?.id ?? 'guest'],
@@ -768,6 +775,10 @@ function SplitAgreementContent() {
     staleTime: 1000 * 15,
   });
 
+  // Refresh participants on returning from an invitation, without discarding local edits.
+  useFocusEffect(useCallback(() => { if (user?.id && drafts === null) void query.refetch(); }, [user?.id, drafts, query.refetch]));
+  const invitations = useQuery({ queryKey: ['studio', 'split-sessions', user?.id ?? 'guest'], queryFn: loadHostedSplitSessions, enabled: Boolean(user?.id) && query.data?.canManage === true && query.data?.agreement.content_type === 'session', retry: false });
+  const hostedInvitation = invitations.data?.find((session) => session.agreementId === agreementId);
   const detail = query.data;
   const canEdit = Boolean(detail?.canManage) && detail?.agreement.status !== 'locked';
 
@@ -806,6 +817,7 @@ function SplitAgreementContent() {
 
   const refresh = useCallback(async () => {
     setDrafts(null);
+    removedUserIds.current.clear();
     await queryClient.invalidateQueries({ queryKey: splitDetailKey(agreementId) });
     await queryClient.invalidateQueries({ queryKey: SPLIT_LIST_KEY });
   }, [agreementId, queryClient]);
@@ -821,7 +833,9 @@ function SplitAgreementContent() {
     if (!detail || !drafts) return;
     setSaving(true);
     try {
-      const removed = detail.participants.filter((participant) => !drafts.some((row) => row.payee_user_id === participant.payee_user_id));
+      // A QR guest may join while shares are being edited. Only remove people
+      // explicitly removed by the host, never newcomers absent from an older draft.
+      const removed = detail.participants.filter((participant) => removedUserIds.current.has(participant.payee_user_id));
       for (const participant of removed) {
         await deleteSplitParticipant(agreementId, participant.payee_user_id);
       }
@@ -913,6 +927,10 @@ function SplitAgreementContent() {
         </View>
       </View>
 
+      {detail.canManage && detail.agreement.content_type === 'session' ? <View style={styles.stack}>
+        {hostedInvitation ? <PrimaryButton label="Invitation QR and link" icon="qr-code" tone="ghost" onPress={() => router.push(`/studio/splits/invite/${hostedInvitation.sessionId}` as any)} /> : invitations.isPending ? <ActivityIndicator accessibilityLabel="Loading invitation" color={theme.colors.accentText} /> : invitations.isError ? <><Text style={styles.errorText}>Your invitation could not be loaded.</Text><PrimaryButton label="Retry invitation" tone="ghost" onPress={() => void invitations.refetch()} /></> : <PrimaryButton label="My hosted sessions" tone="ghost" onPress={() => router.push('/studio/splits/host' as any)} />}
+      </View> : null}
+
       {awaitingMyResponse ? (
         <View style={styles.callout}>
           <MaterialIcons name="how-to-reg" size={20} color={theme.colors.accentText} />
@@ -968,6 +986,7 @@ function SplitAgreementContent() {
                       accessibilityLabel={`Remove ${name}`}
                       onPress={() => {
                         selectionHaptic();
+                        removedUserIds.current.add(row.payee_user_id);
                         setDrafts((current) => (current ?? rows).filter((entry) => entry.payee_user_id !== row.payee_user_id));
                       }}
                       style={styles.removeButton}
@@ -1058,7 +1077,7 @@ function SplitAgreementContent() {
               : 'Saving reopens this sheet as a draft and clears approvals already given.'}
           </Text>
           <View style={styles.saveButtons}>
-            <PrimaryButton label="Discard" tone="ghost" onPress={() => setDrafts(null)} disabled={saving} />
+            <PrimaryButton label="Discard" tone="ghost" onPress={() => { removedUserIds.current.clear(); setDrafts(null); }} disabled={saving} />
             <PrimaryButton label="Save shares" icon="save" onPress={saveAll} busy={saving} />
           </View>
         </View>
@@ -1152,6 +1171,7 @@ function SplitAgreementContent() {
         onClose={() => setPickerOpen(false)}
         onPick={(person) => {
           setPickerOpen(false);
+          removedUserIds.current.delete(person.user_id);
           setDrafts([
             ...(drafts ?? rows),
             {

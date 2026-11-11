@@ -89,6 +89,7 @@ async function fixture({ screen = 'detail', actor = owner, visibility = 'private
   }
   const sdk = { from: query, rpc: async (name, args) => { f.db.push({ rpc: name, args }); return { data: null, error: null }; }, functions: { invoke: async (name, options) => { f.calls.push({ name, body: options.body }); return f.invoke(name, options); } } };
   const sourceFiles = {
+    './roomViewState': 'src/features/listeningRoom/roomViewState.ts',
     './mixAccessSession': 'src/features/playback/mixAccessSession.ts',
     './nativeMixAccess': 'src/features/playback/nativeMixAccess.ts',
     './nativeMixDetail': 'src/features/playback/nativeMixDetail.ts',
@@ -109,6 +110,29 @@ async function fixture({ screen = 'detail', actor = owner, visibility = 'private
       require(id) {
         if (id === 'react' || id === 'react/jsx-runtime') return require(id);
         if (id === 'react-native') return native;
+        if (id === '@react-navigation/native') return { useIsFocused: () => f.focused };
+        if (id.endsWith('/features/listeningRoom/ListeningRoomScreen')) return load('src/features/listeningRoom/ListeningRoomScreen.tsx');
+        if (id.endsWith('/features/listeningRoom/roomViewState') || id === './roomViewState') return load('src/features/listeningRoom/roomViewState.ts');
+        if (id === './ListeningDeck3D') return { ListeningDeck3D: props => {
+          React.useEffect(() => { props.onReady(); }, []);
+          React.useEffect(() => { if (props.cueRequestId != null) props.onCueReady(props.cueRequestId); }, [props.cueRequestId]);
+          return React.createElement(View, { accessibilityLabel: 'Mock native deck boundary' });
+        } };
+        if (id.endsWith('/features/listeningRoom/useMixSocial')) return { useMixSocial: (id, isPublic) => {
+          const identity = load('src/features/playback/useNativeMixDetail.ts').useMixSessionIdentity();
+          const [state, setState] = React.useState({ liked: false, saved: false });
+          const scope = f.session.scope();
+          const change = async kind => {
+            assert.ok(isPublic, 'protected Mix attempted a social action');
+            const result = await f.save(); f.session.assertCurrent(scope);
+            if (!result.success) throw new Error('Save failed');
+            f.calls.push({ social: kind, actor: scope.actor, id });
+            setState(before => ({ ...before, [kind === 'like' ? 'liked' : 'saved']: result.saved }));
+          };
+          return { ...(identity.ready ? state : {}), signedIn: Boolean(scope.actor), ready: identity.ready,
+            busy: false, loading: false, error: null, retry: async () => {},
+            toggleLike: () => change('like'), toggleSave: () => change('save') };
+        } };
         if(id==='@react-native-async-storage/async-storage')return{default:{getItem:async key=>{if(f.failDraftRead)throw new Error('device read failure');return f.localStore.get(key)??null;},setItem:async(key,value)=>f.localStore.set(key,value),removeItem:async key=>f.localStore.delete(key)}};
         if(id==='@react-native-community/datetimepicker')return{default:()=>null};
         if(id==='expo-file-system/legacy')return{};
@@ -153,6 +177,7 @@ async function fixture({ screen = 'detail', actor = owner, visibility = 'private
     modules.set(path, module.exports); return module.exports;
   }
   f.session = load(sourceFiles['./mixAccessSession']).mixAccessSession; f.session.bindActor(actor);
+  if (screen === 'detail') load('src/features/listeningRoom/roomViewState.ts').roomViewState.write(f.session.identityKey(), mixId, { tab: 'tracklist' });
   f.accessClient = load(sourceFiles['./nativeMixAccess']).nativeMixAccess;
   f.detailApi = load(sourceFiles['./nativeMixDetail']);
   const control = load(sourceFiles['./nativePlaybackControl']);
@@ -184,10 +209,11 @@ test('private detail renders scoped metadata/tracklist without public social rea
   await f.render(); assert.ok(f.text().includes('Scoped private fixture')); assert.ok(f.text().includes('Private mix'));
   assert.ok(f.text().includes('Second selection')); assert.deepEqual(f.db, []);
   for (const label of ['Share mix', 'Save mix', 'Request Track ID', 'Post comment', 'Post mix to community']) assert.equal(f.button(label), undefined);
-  assert.ok(f.button('Download mix')); assert.equal(f.client.getQueryCache().getAll().length, 0);
+  await f.press('Listen'); assert.ok(f.button('Download')); assert.equal(f.client.getQueryCache().getAll().length, 0);
 }));
-test('private tracklist jump starts the intended scoped track at its timestamp with no delayed seek', using(async f => {
-  await f.render(); await f.press('Jump to Second selection');
+test('private chapter selection stays paused; explicit Play starts the intended scoped timestamp with no delayed seek', using(async f => {
+  await f.render(); await f.press('Seek to Second selection at 1:24');
+  assert.equal(f.calls.filter(item => item.play).length, 0); await f.press('Play mix');
   const call = f.calls.find(item => item.play); assert.equal(call.startAt, 84); assert.equal(call.play.mixId, mixId);
   assert.ok(call.play.mixAccess); assert.ok(!JSON.stringify(call.play).includes(token));
   await f.tick(350); assert.equal(f.calls.filter(item => item.control === 'seekTo').length, 0);
@@ -218,29 +244,29 @@ test('public rollout fallback renders audio before independently failing/retryin
   f.query = async table => table === 'mixes' ? { data: response('public').data.mix, error: null }
     : table === 'mix_tracklist_items' ? failed ? { data: null, error: new Error('synthetic') } : { data: response('public').data.tracklist, error: null }
       : { data: [], error: null };
-  await f.render(); assert.ok(f.button('Play mix')); assert.ok(f.text().includes('Tracklist could not load'));
+  await f.render(); assert.ok(f.button('Play mix')); assert.ok(f.text().includes('The tracklist could not load.'));
   const tables = f.db.filter(item => item.table === 'mix_tracklist_items');
   assert.ok(tables.every(item => item.filters.some(([key, value]) => key === 'mixes.visibility' && value === 'public')));
-  failed = false; await f.press('Tracklist could not load. Try again.'); assert.ok(f.text().includes('Second selection'));
+  failed = false; await f.press('Retry tracklist'); assert.ok(f.text().includes('Second selection'));
   assert.ok(f.button('Share mix')); await f.press('Share mix'); assert.ok(f.shares[0].message.includes(`https://pluggd.fm/mixes/${mixId}`));
 }));
 test('new pause suppresses a pending track-jump failure and all delayed navigation', using(async f => {
   await f.render(); const pending = deferred(); f.playImpl = () => pending.promise;
-  await f.press('Jump to Second selection'); f.intent.beginNativePlaybackIntent();
+  await f.press('Seek to Second selection at 1:24'); await f.press('Play mix'); f.intent.beginNativePlaybackIntent();
   await act(async () => pending.resolve(null)); await f.tick(350);
   assert.equal(f.alerts.length, 0); assert.equal(f.routes.length, 0); assert.ok(!f.text().includes('This mix could not start'));
 }));
 test('authorized download opens only the checked URL and describes handoff truthfully', using(async f => {
   await f.render(); f.invoke = async (_, { body }) => body.action === 'download' ? { data: { url: signed('audio'), fileName: 'mix.mp3' }, error: null } : response();
-  await f.press('Download mix'); assert.deepEqual(f.links, [signed('audio')]); assert.equal(f.alerts[0][0], 'Download opened');
+  await f.press('Listen'); await f.press('Download'); assert.deepEqual(f.links, [signed('audio')]); assert.equal(f.alerts[0][0], 'Download opened');
 }));
 test('account change during download suppresses URL handoff', using(async f => {
   await f.render(); const pending = deferred(); f.invoke = (_, { body }) => body.action === 'download' ? pending.promise : Promise.resolve({ data: null, error: { status: 404 } });
-  await f.press('Download mix'); await f.actor(other);
+  await f.press('Listen'); await f.press('Download'); await f.actor(other);
   await act(async () => pending.resolve({ data: { url: signed('audio'), fileName: 'mix.mp3' }, error: null })); assert.equal(f.links.length, 0);
 }));
 test('focused metadata refresh failure invalidates private playback permission', using(async f => {
-  await f.render(); await f.press('Jump to Second selection'); await f.tick(350);
+  await f.render(); await f.press('Seek to Second selection at 1:24'); await f.press('Play mix'); await f.tick(350);
   const access = f.calls.find(call => call.play).play.mixAccess;
   f.invoke = async () => ({ data: null, error: { status: 404 } }); await f.tick(200000);
   assert.equal(f.session.authorized(mixId, access), false); assert.ok(!f.text().includes('Scoped private fixture'));
@@ -267,15 +293,16 @@ test('full player saves public Mix successfully rather than reporting false fail
   const f = await fixture({ screen: 'player' });
   try {
     f.player.currentTrack = { id: mixId, mixId, title: 'Public fixture', artist: 'Fixture', url: `mix:${mixId}`, type: 'mix' };
-    await f.render(); assert.ok(f.db.some(call => call.rpc === 'get_public_playback_metadata')); await f.press('Like current track'); assert.equal(f.alerts.at(-1)[0], 'Saved');
+    await f.render(); assert.ok(f.db.some(call => call.rpc === 'get_public_playback_metadata')); await f.press('Save this mix');
+    assert.equal(f.calls.find(call => call.social)?.social, 'save'); assert.ok(f.button('Remove mix from saved')); assert.equal(f.alerts.length, 0);
   } finally { await f.close(); }
 });
 test('landscape private detail retains playback/download and excludes public actions', async () => {
   const f = await fixture({ landscape: true });
   try {
-    await f.render(); assert.ok(f.text().includes('Private mix')); assert.ok(f.button('Play mix')); assert.ok(f.button('Download mix'));
+    await f.render(); assert.ok(f.text().includes('Private mix')); assert.ok(f.button('Play mix')); assert.ok(f.button('Download'));
     assert.equal(f.button('Share mix'), undefined); assert.equal(f.button('Save mix'), undefined);
-    await f.press('Jump to Second selection'); await f.tick(350); assert.equal(f.calls.find(call => call.play).startAt, 84);
+    await f.press('Seek to Second selection at 1:24'); await f.press('Play mix'); await f.tick(350); assert.equal(f.calls.find(call => call.play).startAt, 84);
   } finally { await f.close(); }
 });
 test('unlisted recipient source navigation carries only ID and live opaque handle', async () => {
@@ -293,16 +320,16 @@ test('public save completed after account change cannot announce old-account suc
   try {
     f.player.currentTrack = { id: mixId, mixId, title: 'Public fixture', artist: 'Fixture', url: `mix:${mixId}`, type: 'mix' };
     const pending = deferred(); f.save = () => pending.promise;
-    await f.render(); await f.press('Like current track'); await f.actor(other);
+    await f.render(); await f.press('Save this mix'); await f.actor(other);
     await act(async () => pending.resolve({ success: true, saved: true })); assert.equal(f.alerts.length, 0);
   } finally { await f.close(); }
 });
-test('expired cover shows a retry and refetches scoped artwork', using(async f => {
+test('expired room cover falls back without exposing a stale signed image', using(async f => {
   await f.render(); const image = f.container.querySelector('img');
-  await act(async () => image.dispatchEvent(new window.Event('error'))); assert.ok(f.button('Reload artwork'));
+  await act(async () => image.dispatchEvent(new window.Event('error')));
   assert.equal(f.container.querySelector('img'), null);
   f.invoke = async () => { const result = response(); result.data.mix.cover_url = signed('fresh-cover'); return result; };
-  await f.press('Reload artwork'); assert.equal(f.container.querySelector('img').getAttribute('src'), signed('fresh-cover'));
+  await f.app('background'); await f.app('active'); assert.equal(f.container.querySelector('img').getAttribute('src'), signed('fresh-cover'));
 }));
 test('mini player routes omit private presentation and queue carries only focus', async () => {
   const f = await fixture({ screen: 'mini' });

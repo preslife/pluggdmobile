@@ -336,6 +336,7 @@ export type SavedContentItem = {
   source:
     | 'favorites'
     | 'saved_content'
+    | 'mix_saves'
     | 'event_rsvps'
     | 'community_members'
     | 'user_follows'

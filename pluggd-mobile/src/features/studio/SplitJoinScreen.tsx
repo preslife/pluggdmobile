@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { pluggdFonts } from '../../design/typography';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { SplitAgreementScreen } from './SplitEngineScreens';
+import { rememberSplitApprovalReturn, rememberSplitJoinReturn } from './splitPendingReturn';
 import { joinSplitWithConnectCard, loadSplitApprovalAgreement, loadSplitJoinPreview } from './splitJoinService';
 
 function useStyles() {
@@ -34,10 +35,10 @@ export function SplitJoinScreen() {
   const { user, loading } = useAuth();
   const token = typeof params.token === 'string' ? params.token : '';
   const source = typeof params.source === 'string' ? params.source : 'link';
-  return <SplitInvitation key={`${token}:${user?.id ?? 'guest'}`} token={token} source={source} userId={user?.id} authLoading={loading} />;
+  return <SplitInvitation key={`${token}:${user?.id ?? 'guest'}`} token={token} source={source} userId={user?.id} accountEmail={user?.email} authLoading={loading} />;
 }
 
-function SplitInvitation({ token, source, userId, authLoading }: { token: string; source: string; userId?: string; authLoading: boolean }) {
+function SplitInvitation({ token, source, userId, accountEmail, authLoading }: { token: string; source: string; userId?: string; accountEmail?: string; authLoading: boolean }) {
   const { theme, styles } = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -69,9 +70,11 @@ function SplitInvitation({ token, source, userId, authLoading }: { token: string
           <Text style={styles.heading}>Share your Connect Card details</Text>
           <Text style={styles.body}>Add your credit name, contact email, split role and professional publishing, management, label and company details to this sheet. Your private vault is never shared.</Text>
           <Text style={styles.body}>The host sets percentages later. Adding your details does not approve a split.</Text>
+          {preview.expiresAt ? <Text style={styles.body}>Invitation expires {new Date(preview.expiresAt).toLocaleString()}.</Text> : null}
+          {userId ? <Text style={styles.body}>Joining as {accountEmail || 'your signed-in PLUGGD account'}. Check this is the account you want credited before continuing.</Text> : null}
           {authLoading ? <ActivityIndicator color={theme.colors.accentText} /> : !userId ? <>
-            <Text style={styles.body}>Sign in, then reopen this invitation to add your details.</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/auth/login')} style={styles.primary}><Text style={styles.primaryText}>Sign in to join</Text></Pressable>
+            <Text style={styles.body}>Sign in to return to this invitation and review your details.</Text>
+            <Pressable accessibilityRole="button" onPress={() => { rememberSplitJoinReturn(token, source); router.push('/auth/login'); }} style={styles.primary}><Text style={styles.primaryText}>Sign in to join</Text></Pressable>
           </> : <>
             {join.isError ? <Text accessibilityRole="alert" style={styles.error}>{join.error.message}</Text> : null}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: join.isPending, busy: join.isPending }} disabled={join.isPending} onPress={() => join.mutate()} style={[styles.primary, join.isPending && { opacity: 0.6 }]}>
@@ -100,8 +103,8 @@ function ApprovalLink({ approvalId, userId, authLoading }: { approvalId: string;
   return <View style={[styles.screen, { paddingTop: insets.top + 24 }]}><Stack.Screen options={{ headerShown: false }} /><View style={styles.content}>
     <Text accessibilityRole="header" style={styles.title}>Split approval</Text>
     {authLoading || (userId && query.isPending) ? <ActivityIndicator color={theme.colors.accentText} /> : !userId ? <>
-      <Text style={styles.body}>Sign in, then reopen this notification to review your percentages.</Text>
-      <Pressable accessibilityRole="button" onPress={() => router.push('/auth/login')} style={styles.primary}><Text style={styles.primaryText}>Sign in</Text></Pressable>
+      <Text style={styles.body}>Sign in to return here and review your percentages.</Text>
+      <Pressable accessibilityRole="button" onPress={() => { rememberSplitApprovalReturn(approvalId); router.push('/auth/login'); }} style={styles.primary}><Text style={styles.primaryText}>Sign in</Text></Pressable>
     </> : <><Text accessibilityRole="alert" style={styles.error}>{query.error?.message || 'This split approval is unavailable.'}</Text><Pressable accessibilityRole="button" onPress={() => void query.refetch()} style={styles.primary}><Text style={styles.primaryText}>Try again</Text></Pressable></>}
     <Pressable accessibilityRole="button" onPress={() => router.replace('/notifications')} style={styles.secondary}><Text style={styles.secondaryText}>Back to notifications</Text></Pressable>
   </View></View>;

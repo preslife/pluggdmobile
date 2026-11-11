@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "source": "PLUGGD approved web deck, corrections 1e1d9bf26de8449bce1be9c8b014b96eb39fd225",
+  "three": "0.184.0",
+  "esbuild": "0.21.5",
+  "meshoptimizer": "Three.js embedded meshoptimizer 1.1 decoder",
+  "model": {
+    "file": "pluggd-deck-mobile.glb",
+    "bytes": 5185568,
+    "sha256": "996666a3bed216e368866139f0437a94417a85aad0f1a13ecfecb6b533ca2fa1",
+    "triangles": 738094,
+    "extensionsRequired": [
+      "EXT_meshopt_compression",
+      "KHR_mesh_quantization",
+      "EXT_texture_webp"
+    ]
+  },
+  "html": {
+    "file": "deck.html",
+    "bytes": 7565810,
+    "sha256": "48d25c918f171bcaad3cb29f868d4db5e95a00447fd68541a98a69779357e3a7"
+  },
+  "licences": [
+    "../../src/features/listeningRoom/renderer/THREE-LICENSE.txt",
+    "../../src/features/listeningRoom/renderer/MESHOPTIMIZER-LICENSE.txt"
+  ]
+}

@@ -1,0 +1,22 @@
+// The native app currently uses English copy; keep Academy strings together for future locale wiring.
+export const academyCopy = {
+  title: 'Academy', eyebrow: 'MAKE YOUR NEXT MOVE', intro: 'Build your skills, one lesson at a time.',
+  subtitle: 'Free courses for your music journey. Pick up here or on the website.',
+  free: 'Free course', catalogue: 'All courses', back: 'Back to Academy',
+  loading: 'Loading courses…', loadFailed: 'We couldn’t load Academy. Please try again.', retry: 'Try again',
+  empty: 'New lessons are on the way.', emptyHelp: 'There are no free courses available right now. Check back soon.',
+  more: 'Load more courses', unavailable: 'This course isn’t available in the app.',
+  exploreMore: 'Load more to keep exploring the free courses.',
+  unavailableHelp: 'Explore the free courses in Academy.', detailFailed: 'We couldn’t load this course. Please try again.',
+  noLessons: 'Lessons for this course haven’t been published yet.', lessonPlan: 'Lesson plan',
+  continue: 'Continue learning', start: 'Start learning', previous: 'Previous lesson', next: 'Next lesson',
+  complete: 'Mark complete', incomplete: 'Mark incomplete', completed: 'Completed',
+  progress: 'Your progress', progressLoading: 'Loading your progress…', progressFailed: 'We couldn’t load your progress.',
+  progressHelp: 'Your progress syncs with the website.', saving: 'Saving progress…', saved: 'Progress saved',
+  saveFailed: 'Your progress hasn’t saved. Check your connection and try again.', sync: 'Refresh progress',
+  signIn: 'Sign in to save progress', signInHelp: 'Learn for free. Sign in to resume across your phone and the website.',
+  contentUnavailable: 'This lesson’s content isn’t available yet.', mediaLoading: 'Loading lesson media…',
+  mediaFailed: 'We couldn’t play this lesson’s media.', resources: 'Lesson resources',
+  resource: 'Open resource', linkFailed: 'We couldn’t open that link. Please try again.', practice: 'Practice questions',
+  questionsFailed: 'We couldn’t load this lesson’s questions.', search: 'Search free courses', noMatches: 'No courses match your search.',
+} as const;

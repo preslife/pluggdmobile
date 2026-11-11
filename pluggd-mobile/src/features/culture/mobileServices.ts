@@ -2790,9 +2790,15 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         source: owned ? 'playlists' : 'playlist_follows',
       };
     });
-  const [favorites, genericSaved, eventRsvps, memberships, follows, releasePurchases, samplePackPurchases, beatPurchases, licensingContracts, fanSubscriptions, merchCheckoutSessions, storeOrders, tickets] = await Promise.all([
+  const [favorites, genericSaved, canonicalMixSaves, eventRsvps, memberships, follows, releasePurchases, samplePackPurchases, beatPurchases, licensingContracts, fanSubscriptions, merchCheckoutSessions, storeOrders, tickets] = await Promise.all([
     safeList<any>((supabase as any).from('favorites').select('id,beat_id,release_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('saved_content').select('id,content_type,content_id,metadata,created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(100)),
+    (async () => {
+      const { data, error } = await (supabase as any).from('mix_saves').select('mix_id,created_at')
+        .eq('user_id', userId).order('created_at', { ascending: false }).limit(100);
+      if (error || !Array.isArray(data)) throw new Error('Your saved mixes could not load. Please try again.');
+      return data as Array<{ mix_id: string; created_at: string }>;
+    })(),
     safeList<any>((supabase as any).from('event_rsvps').select('id,event_id,status,created_at,updated_at').eq('user_id', userId).in('status', ['interested', 'going']).order('updated_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('community_members').select('id,community_id,status,joined_at,last_active_at').eq('user_id', userId).eq('status', 'active').order('last_active_at', { ascending: false }).limit(50)),
     safeList<any>((supabase as any).from('user_follows').select('id,following_id,created_at').eq('follower_id', userId).order('created_at', { ascending: false }).limit(50)),
@@ -2832,6 +2838,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
   const favoriteReleaseIds = favorites.map((item) => item.release_id).filter(Boolean);
   const releaseIds = Array.from(new Set([...favoriteReleaseIds, ...releasePurchases.map((item) => item.release_id).filter(Boolean)]));
   const genericReleaseIds = Array.from(new Set([...(genericByType.release ?? []).map((item) => item.content_id).filter(Boolean), ...(genericByType.mix ?? []).map((item) => item.content_id).filter(Boolean)]));
+  const savedMixIds = Array.from(new Set([...canonicalMixSaves.map(item => item.mix_id), ...(genericByType.mix ?? []).map(item => item.content_id)].filter(Boolean)));
   const packIds = samplePackPurchases.map((item) => item.sample_pack_id).filter(Boolean);
   const genericPackIds = (genericByType.sample_pack ?? []).map((item) => item.content_id).filter(Boolean);
   const videoIds = (genericByType.video ?? []).map((item) => item.content_id).filter(Boolean);
@@ -2857,7 +2864,7 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
       .filter(Boolean),
   ));
 
-  const [beats, releases, genericReleases, samplePacks, genericSamplePacks, videos, events, communities, profiles, merchProducts, creatorMerchProducts] = await Promise.all([
+  const [beats, releases, genericReleases, savedPublicMixes, samplePacks, genericSamplePacks, videos, events, communities, profiles, merchProducts, creatorMerchProducts] = await Promise.all([
     beatIds.length
       ? safeList<BeatItem>((supabase as any).from('beats').select('id,title,producer_name,image_url,audio_url,tagged_url,genre,bpm,key,price,description,moods,tags,license_prices,available_licenses,created_at').in('id', beatIds))
       : Promise.resolve([]),
@@ -2866,6 +2873,14 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
       : Promise.resolve([]),
     genericReleaseIds.length
       ? safeList<ReleaseItem>(supabase.from('releases').select('id,title,artist,cover_art_url,preview_url,download_url,genre,price,download_price,minimum_price,created_at').in('id', genericReleaseIds))
+      : Promise.resolve([]),
+    savedMixIds.length
+      ? (async () => {
+        const { data, error } = await (supabase as any).from('mixes').select('id,slug,title,cover_url,city')
+          .in('id', savedMixIds).eq('status', 'published').eq('visibility', 'public');
+        if (error || !Array.isArray(data)) throw new Error('Your saved mixes could not load. Please try again.');
+        return data as Array<{ id: string; slug: string | null; title: string | null; cover_url: string | null; city: string | null }>;
+      })()
       : Promise.resolve([]),
     packIds.length
       ? safeList<SamplePackItem>((supabase as any).from('sample_packs').select('id,title,description,cover_art_url,preview_url,download_url,genre,bpm_range,price,sample_count,tags,total_downloads,created_at').in('id', packIds))
@@ -2896,6 +2911,8 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
   const beatById = new Map(beats.map((item) => [item.id, item]));
   const releaseById = new Map(releases.map((item) => [item.id, item]));
   const genericReleaseById = new Map(genericReleases.map((item) => [item.id, item]));
+  const savedMixById = new Map(savedPublicMixes.map(item => [item.id, item]));
+  const canonicalPublicMixIds = new Set(canonicalMixSaves.filter(item => savedMixById.has(item.mix_id)).map(item => item.mix_id));
   const packById = new Map(samplePacks.map((item) => [item.id, item]));
   const genericPackById = new Map(genericSamplePacks.map((item) => [item.id, item]));
   const videoById = new Map(videos.map((item) => [item.id, item]));
@@ -2908,6 +2925,11 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
 
   const saved = [
     ...playlistItems,
+    ...canonicalMixSaves.flatMap<SavedContentItem>((bookmark) => {
+      const mix = savedMixById.get(bookmark.mix_id);
+      return mix ? [{ id: `mix-save:${mix.id}`, kind: 'mix', title: mix.title || 'Saved mix', subtitle: mix.city || 'Mix',
+        imageUrl: mix.cover_url, route: `/mixes/${mix.slug || mix.id}`, source: 'mix_saves' }] : [];
+    }),
     ...favorites
     .map<SavedContentItem | null>((favorite) => {
       if (favorite.beat_id) {
@@ -2973,15 +2995,23 @@ export async function loadLibraryBundle(): Promise<LibraryBundle> {
         source: 'user_follows',
       };
     }),
-    ...genericSaved.map<SavedContentItem>((item) => {
+    // Preserve old saved_content bookmarks; canonical saves take precedence without a dual write.
+    ...genericSaved.filter(item => item.content_type !== 'mix' || !canonicalPublicMixIds.has(item.content_id)).map<SavedContentItem>((item) => {
       const kind = item.content_type as SavedContentKind;
-      if (kind === 'release' || kind === 'mix') {
+      if (kind === 'mix') {
+        const mix = savedMixById.get(item.content_id);
+        const oldRelease = genericReleaseById.get(item.content_id);
+        return { id: item.id, kind, title: mix?.title || oldRelease?.title || item.metadata?.title || 'Saved mix',
+          subtitle: mix?.city || oldRelease?.artist || item.metadata?.subtitle || 'Mix', imageUrl: mix?.cover_url || oldRelease?.cover_art_url || item.metadata?.imageUrl,
+          route: mix ? `/mixes/${mix.slug || mix.id}` : oldRelease ? `/release/${item.content_id}` : `/mixes/${item.content_id}`, source: 'saved_content' };
+      }
+      if (kind === 'release') {
         const release = genericReleaseById.get(item.content_id);
         return {
           id: item.id,
           kind,
-          title: release?.title || item.metadata?.title || (kind === 'mix' ? 'Saved mix' : 'Saved release'),
-          subtitle: release?.artist || item.metadata?.subtitle || (kind === 'mix' ? 'Mix' : 'Release'),
+          title: release?.title || item.metadata?.title || 'Saved release',
+          subtitle: release?.artist || item.metadata?.subtitle || 'Release',
           imageUrl: release?.cover_art_url || item.metadata?.imageUrl,
           route: `/release/${item.content_id}`,
           source: 'saved_content',
