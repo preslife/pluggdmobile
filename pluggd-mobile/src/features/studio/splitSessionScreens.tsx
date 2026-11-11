@@ -47,6 +47,7 @@ function SessionShell({ title, children, onRefresh, refreshing = false }: { titl
       <Pressable accessibilityRole="button" accessibilityLabel="Back to split sheets" style={styles.back} onPress={() => router.canGoBack() ? router.back() : router.replace('/studio/splits' as any)}><MaterialIcons name="arrow-back" size={23} color={theme.colors.text} /></Pressable>
       <Text accessibilityRole="header" style={styles.title}>{title}</Text>{children}
     </ScrollView>
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: theme.colors.background }} />
   </View>;
 }
 

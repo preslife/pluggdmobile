@@ -52,7 +52,7 @@ export function courseMetadata(value: Row, system: AcademySystem): AcademyCourse
 export function parseLessons(value: unknown, system: AcademySystem): AcademyLesson[] {
   if (!Array.isArray(value) || value.length > 1000) throw new Error('invalid_lessons');
   const seen = new Set<string>();
-  return value.map((raw): AcademyLesson => {
+  return value.map((raw, index): AcademyLesson => {
     if (!object(raw) || typeof raw.id !== 'string' || !raw.id || raw.id.length > 255 || seen.has(raw.id)
         || (system === 'lms' && !UUID.test(raw.id)) || typeof raw.title !== 'string') throw new Error('invalid_lessons');
     seen.add(raw.id);
@@ -63,7 +63,7 @@ export function parseLessons(value: unknown, system: AcademySystem): AcademyLess
         .find((item): item is string => typeof item === 'string' && !!item.trim()) ?? '';
       if (!body && typeof raw.content.html === 'string') { body = raw.content.html; format = 'html'; }
     }
-    return { id: raw.id, title: raw.title, summary: text(raw.summary), body, format,
+    return { id: raw.id, title: raw.title.trim() || `Lesson ${index + 1}`, summary: text(raw.summary), body, format,
       video: safeAcademyUrl(raw.video_asset_url ?? raw.videoUrl), audio: safeAcademyUrl(raw.audioUrl),
       resources: Array.isArray(raw.download_urls) ? raw.download_urls.map(safeAcademyUrl).filter((url): url is string => !!url) : [] };
   });

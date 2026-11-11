@@ -2,11 +2,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Alert, AppState, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthProvider';
 import { usePlayback } from '../../context/PlaybackProvider';
 import { edFonts } from '../../design/editorial';
+import { useReducedMotion } from '../../design/useReducedMotion';
 import { useBottomChromeInset } from '../../design/useBottomChromeInset';
 import { usePluggdTheme } from '../../design/usePluggdTheme';
 import { DiscoveryHeader } from '../discovery/DiscoveryHeader';
@@ -38,14 +40,27 @@ function Message({ title, help, retry, loading = false }: { title: string; help?
   </View>;
 }
 
+// Lesson selection should reveal the reader rather than leave it below the outline.
+const RevealLesson = createContext<(target: View | null) => void>(() => undefined);
+
 function Shell({ children, refresh, refreshing = false }: { children: ReactNode; refresh?: () => void; refreshing?: boolean }) {
-  const theme = usePluggdTheme(); const bottom = useBottomChromeInset();
+  const theme = usePluggdTheme(); const bottom = useBottomChromeInset(); const insets = useSafeAreaInsets(); const reducedMotion = useReducedMotion();
+  const scroll = useRef<ScrollView>(null); const page = useRef<View>(null); const pageY = useRef(0);
+  const reveal = useCallback((target: View | null) => {
+    if (!target || !page.current) return;
+    target.measureLayout(page.current, (_x, y) => {
+      scroll.current?.scrollTo({ y: Math.max(0, pageY.current + y - insets.top - 16), animated: !reducedMotion });
+    }, () => undefined);
+  }, [insets.top, reducedMotion]);
   return <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: bottom + 24 }}
+    <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: bottom + 24 }}
       refreshControl={refresh ? <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.colors.accentText} /> : undefined}>
       <DiscoveryHeader />
-      <View style={styles.page}>{children}</View>
+      <View ref={page} collapsable={false} onLayout={event => { pageY.current = event.nativeEvent.layout.y; }} style={styles.page}>
+        <RevealLesson.Provider value={reveal}>{children}</RevealLesson.Provider>
+      </View>
     </ScrollView>
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: theme.colors.background }} />
   </View>;
 }
 
@@ -124,10 +139,16 @@ function Course({ identifier, actor }: { identifier: string; actor: string | nul
 
 function Reader({ detail, actor }: { detail: AcademyDetail; actor: string | null }) {
   const { colors } = usePluggdTheme(); const router = useRouter(); const client = useQueryClient();
-  const [selected, setSelected] = useState<string>(); const [saving, setSaving] = useState(false); const [saved, setSaved] = useState(false);
+  const [selected, setSelected] = useState<string>(); const [revealRequest, setRevealRequest] = useState(0); const [saving, setSaving] = useState(false); const [saved, setSaved] = useState(false);
   const [failed, setFailed] = useState<{ id: string; completed: boolean | null }>(); const [mediaReady, setMediaReady] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const active = useRef(true); const busy = useRef(false);
+  const lessonPanel = useRef<View>(null); const revealLesson = useContext(RevealLesson);
+  useEffect(() => {
+    if (!selected) return;
+    const frame = requestAnimationFrame(() => revealLesson(lessonPanel.current));
+    return () => cancelAnimationFrame(frame);
+  }, [selected, revealRequest, revealLesson]);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const progressKey = ['academy', actor, 'progress', detail.course.system, detail.course.id];
   const progress = useQuery({ queryKey: progressKey, queryFn: () => academyApi.progress(actor!, detail),
@@ -151,7 +172,7 @@ function Reader({ detail, actor }: { detail: AcademyDetail; actor: string | null
     }
     finally { busy.current = false; if (active.current) setSaving(false); }
   };
-  const select = (id?: string) => { if (!id || busy.current) return; setSelected(id); setMediaReady(false); void save(id, null); };
+  const select = (id?: string) => { if (!id || busy.current) return; setSelected(id); setRevealRequest(value => value + 1); setMediaReady(false); void save(id, null); };
   const lesson = detail.lessons.find(item => item.id === selected); const index = detail.lessons.findIndex(item => item.id === selected);
   const completed = progress.data?.completed ?? [];
   const contentAvailable = !!lesson && (lesson.format === 'quiz' ? !!practiceQuestions(lesson) : !!nativeLessonText(lesson).trim()) || mediaReady || !!lesson?.resources.length;
@@ -187,7 +208,7 @@ function Reader({ detail, actor }: { detail: AcademyDetail; actor: string | null
         <Text style={[styles.lessonTitle, { color: colors.text }]}>{item.title}</Text>
         {completed.includes(item.id) && <MaterialIcons name="check-circle" size={22} color={colors.success} />}
       </Pressable>)}</View>
-      {lesson && <View style={[styles.panel, { backgroundColor: colors.surfaceStrong, borderColor: colors.border }]}>
+      {lesson && <View ref={lessonPanel} collapsable={false} style={[styles.panel, { backgroundColor: colors.surfaceStrong, borderColor: colors.border }]}>
         <Text style={[styles.meta, { color: colors.textMuted }]}>Lesson {index + 1} of {detail.lessons.length}</Text>
         <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={[styles.lessonHeading, { color: colors.text }]}>{lesson.title}</Text>
         {!!lesson.summary && <Text style={[styles.body, { color: colors.textSecondary }]}>{lesson.summary}</Text>}
