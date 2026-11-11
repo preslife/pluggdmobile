@@ -109,4 +109,3 @@ export function createAcademyApi(rpc: AcademyRpc, actorScope?: AcademyActorScope
   }
   return { catalogue, detail, progress, save };
 }
-

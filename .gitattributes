@@ -1,1 +1,4 @@
 pluggd-mobile/patches/*.patch -whitespace
+
+# Generated Three.js bundle retains third-party shader literal whitespace.
+pluggd-mobile/assets/listening-room/deck.html -whitespace
